@@ -1,0 +1,23 @@
+# 个人信息（绝不提交）
+personal.py
+cookies.txt
+LLM信息.txt
+LLM*.txt
+config.json
+
+# 运行时缓存与产物
+cache/
+backup/
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+env/
+
+# 其它
+.DS_Store
+*.m4a
+*.onnx

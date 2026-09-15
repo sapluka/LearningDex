@@ -1,0 +1,139 @@
+import os
+import re
+import site
+import ssl
+import time
+import urllib.request
+
+import yt_dlp
+from faster_whisper import WhisperModel
+
+from . import subtitle
+
+
+def _preload_cuda_dlls():
+    try:
+        roots = list(site.getsitepackages())
+        try:
+            roots.append(site.getusersitepackages())
+        except Exception:
+            pass
+        dirs = []
+        for root in roots:
+            for sub in ("nvidia/cublas/bin", "nvidia/cuda_runtime/bin",
+                        "nvidia/cuda_nvrtc/bin", "nvidia/cudnn/bin"):
+                p = os.path.join(root, sub)
+                if os.path.isdir(p) and p not in dirs:
+                    dirs.append(p)
+        if dirs:
+            os.environ["PATH"] = ";".join(dirs) + ";" + os.environ.get("PATH", "")
+            for d in dirs:
+                try:
+                    os.add_dll_directory(d)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
+_preload_cuda_dlls()
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CACHE_DIR = os.path.join(ROOT, "cache", "audio")
+MODEL_FILES = ["config.json", "model.bin", "tokenizer.json"]
+MODEL_EXTRA = ["vocabulary.txt", "vocabulary.json", "preprocessor_config.json"]
+MODEL_MIRROR = "https://hf-mirror.com/{repo}/resolve/main/"
+TURBO = "large-v3-turbo"
+TURBO_REPO = "mobiuslabsgmbh/faster-whisper-large-v3-turbo"
+
+
+def _bvid(url):
+    m = re.search(r"BV[0-9A-Za-z]+", url)
+    return m.group(0) if m else None
+
+
+def _model_dir(size):
+    return os.path.join(ROOT, "cache", "models", "whisper-" + size)
+
+
+def ensure_model(size="base"):
+    d = _model_dir(size)
+    os.makedirs(d, exist_ok=True)
+    repo = TURBO_REPO if size == TURBO else f"SYSTRAN/faster-whisper-{size}"
+    base = MODEL_MIRROR.format(repo=repo)
+    ctx = ssl._create_unverified_context()
+    for f in MODEL_FILES + MODEL_EXTRA:
+        p = os.path.join(d, f)
+        if os.path.exists(p) and os.path.getsize(p) > 0:
+            continue
+        try:
+            req = urllib.request.Request(base + f, headers={"User-Agent": "python"})
+            with urllib.request.urlopen(req, timeout=300, context=ctx) as r, open(p, "wb") as out:
+                total = int(r.headers.get("Content-Length") or 0)
+                got = 0
+                while True:
+                    chunk = r.read(65536)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    got += len(chunk)
+                if total and got < total:
+                    raise urllib.error.HTTPError(url=req.full_url, code=0, msg="incomplete", hdrs=None, fp=None)
+        except urllib.error.HTTPError as e:
+            if os.path.exists(p):
+                os.remove(p)
+    return d
+
+
+def download_audio(url, cfg=None):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    bvid = _bvid(url)
+    name = (bvid or str(hash(url))[:8]) + ".m4a"
+    path = os.path.join(CACHE_DIR, name)
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        return path, False
+    if cfg is not None:
+        subtitle.configure(cfg)
+    opts = {
+        "format": "bestaudio/best",
+        "outtmpl": path,
+        "quiet": True,
+        "noplaylist": True,
+    }
+    if "bilibili" in url.lower():
+        opts["cookiefile"] = subtitle._cookie_source()
+    start = time.time()
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        if "412" in str(e):
+            subtitle._refresh()
+            time.sleep(2)
+            opts["cookiefile"] = subtitle._cookie_source()
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+        else:
+            raise
+    return path, True
+
+
+def transcribe(path, model_size="base", language="zh"):
+    try:
+        model = WhisperModel(ensure_model(TURBO), device="cuda", compute_type="float16")
+        used = f"{TURBO}(cuda)"
+    except Exception:
+        model = WhisperModel(ensure_model(model_size), device="cpu", compute_type="int8")
+        used = f"{model_size}(cpu)"
+    segments, _info = model.transcribe(path, language=language, vad_filter=True)
+    return "".join(s.text for s in segments).strip(), used
+
+
+def transcribe_video(url, cfg=None, model_size="base"):
+    start = time.time()
+    path, _downloaded = download_audio(url, cfg)
+    dl = round(time.time() - start, 1)
+    start = time.time()
+    text, used = transcribe(path, model_size=model_size)
+    asr = round(time.time() - start, 1)
+    return {"subtitle": text, "used": used, "download_s": dl, "asr_s": asr, "audio": path}

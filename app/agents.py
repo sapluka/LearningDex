@@ -1,0 +1,87 @@
+import os
+
+from . import llm
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SKILLS_DIR = os.path.join(ROOT, "skills")
+
+SYSTEM = (
+    "你是视频学习助手。请将下方视频字幕整理成结构化的中文学习文档（markdown 格式），"
+    "包含：核心要点、专有名词解释、内容脉络、关键结论。语言简洁准确。"
+)
+
+PROOF_SYSTEM = (
+    "你是字幕校对员。请修复下列视频字幕中的错别字、乱码、断句与口语误识别，"
+    "使其通顺合理且保持原意。只输出修正后的字幕全文，不要任何解释或额外内容。"
+)
+
+
+def load_skill(name):
+    """从 skills 目录加载讲解 prompt（预留接口）。缺失返回 None。"""
+    for ext in (".md", ".txt"):
+        p = os.path.join(SKILLS_DIR, name + ext)
+        if os.path.exists(p):
+            try:
+                with open(p, encoding="utf-8") as f:
+                    return f.read().strip()
+            except OSError:
+                return None
+    return None
+
+
+def lecture_system():
+    return load_skill("讲解") or SYSTEM
+
+
+def _prompt(info):
+    return (
+        f"视频标题：《{info.get('title')}》\n"
+        f"UP主：{info.get('uploader')}\n"
+        f"时长：{info.get('duration')} 秒\n\n"
+        f"==== 字幕 ====\n{info.get('subtitle')}"
+    )
+
+
+def summarize(cfg, info):
+    msgs = [
+        {"role": "system", "content": lecture_system()},
+        {"role": "user", "content": _prompt(info)},
+    ]
+    return llm.text(cfg, msgs)
+
+
+def proofread(cfg, text):
+    msgs = [
+        {"role": "system", "content": PROOF_SYSTEM},
+        {"role": "user", "content": text},
+    ]
+    return llm.text(cfg, msgs)
+
+
+CHAT_SYSTEM = "你是学习助手。请依据上下文与学习文档，用简洁准确的中文回答用户问题。"
+
+
+def _doc_block(doc):
+    return f"\n\n参考学习文档：\n{doc}" if doc else ""
+
+
+def chat(cfg, history, question, doc=None):
+    msgs = [{"role": "system", "content": CHAT_SYSTEM + _doc_block(doc)}] + history
+    msgs.append({"role": "user", "content": question})
+    return llm.text(cfg, msgs)
+
+
+def answer_selection(cfg, selection, question, doc=None):
+    msgs = [
+        {"role": "system", "content": CHAT_SYSTEM + _doc_block(doc)},
+        {"role": "user", "content": f"文档选中内容：\n{selection}\n\n问题：{question}"},
+    ]
+    return llm.text(cfg, msgs)
+
+
+def explain_term(cfg, term):
+    msgs = [
+        {"role": "system", "content": "你是一个词典。请用中文简明解释下列术语，并给出简短例子。"},
+        {"role": "user", "content": term},
+    ]
+    return llm.text(cfg, msgs)

@@ -1,0 +1,141 @@
+import os
+import re
+
+import webview
+
+from . import agents, config, llm, search, subtitle, transcribe
+
+WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+
+
+def _save_output(url, info, doc):
+    m = re.search(r"BV[0-9A-Za-z]+", url)
+    folder = os.path.join(STATE_DIR, m.group(0) if m else "video")
+    os.makedirs(folder, exist_ok=True)
+    sub_path = os.path.join(folder, "subtitle.txt")
+    doc_path = os.path.join(folder, "doc.md")
+    with open(sub_path, "w", encoding="utf-8") as f:
+        f.write(info.get("subtitle") or "")
+    with open(doc_path, "w", encoding="utf-8") as f:
+        f.write(doc or "")
+    return {"subtitle": sub_path, "doc": doc_path}
+
+
+class Api:
+    def __init__(self):
+        self.cfg = config.load()
+        self.history = []
+        self.current_doc = None
+
+    def load_config(self):
+        return self.cfg
+
+    def save_config(self, c):
+        c = {**self.cfg, **c}
+        config.save(c)
+        self.cfg = c
+        return {"ok": True}
+
+    def test_connection(self, c):
+        c = {**self.cfg, **(c or {})}
+        try:
+            return {"ok": True, "reply": llm.test_connection(c)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def chat(self, message):
+        try:
+            reply = agents.chat(self.cfg, self.history, message, doc=self.current_doc)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        self.history.append({"role": "user", "content": message})
+        self.history.append({"role": "assistant", "content": reply})
+        return {"ok": True, "reply": reply}
+
+    def ask_selection(self, selection, question):
+        try:
+            reply = agents.answer_selection(self.cfg, selection, question, doc=self.current_doc)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        return {"ok": True, "reply": reply}
+
+    def lookup_term(self, term):
+        res = search.search_term(term)
+        if res:
+            return {"ok": True, **res}
+        try:
+            exp = agents.explain_term(self.cfg, term)
+            return {"ok": True, "summary": exp, "source": "llm"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def export_md(self, content, default_name="学习笔记.md"):
+        try:
+            path = webview.windows[0].create_file_dialog(
+                webview.SAVE_DIALOG, save_filename=default_name)
+        except Exception as e:
+            return {"ok": False, "error": f"无法打开保存框：{e}"}
+        if not path:
+            return {"ok": False, "error": "已取消"}
+        if isinstance(path, (list, tuple)):
+            path = path[0]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content or "")
+        return {"ok": True, "path": path}
+
+    def end_study(self, url, final_md):
+        m = re.search(r"BV[0-9A-Za-z]+", url)
+        folder = os.path.join(STATE_DIR, m.group(0) if m else "video")
+        os.makedirs(folder, exist_ok=True)
+        p = os.path.join(folder, "final.md")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(final_md or "")
+        return {"ok": True, "path": p}
+
+    def extract(self, url):
+        try:
+            return {"ok": True, "info": subtitle.extract(url, self.cfg)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def generate_doc(self, url):
+        info = subtitle.extract(url, self.cfg)
+        note = ""
+        if not info["subtitle"]:
+            if not self.cfg.get("auto_transcribe", True):
+                return {"ok": False, "error": f"未获取到字幕：{info.get('error') or '无字幕'}", "info": info}
+            try:
+                tr = transcribe.transcribe_video(
+                    url, self.cfg, model_size=self.cfg.get("whisper_model", "base"))
+            except Exception as e:
+                return {"ok": False, "error": f"语音转写失败：{e}", "info": info}
+            info["subtitle"] = tr["subtitle"]
+            info["transcribe_note"] = f"本地语音转写[{tr.get('used', '?')}]（下载{tr['download_s']}s+识别{tr['asr_s']}s）"
+            if self.cfg.get("proofread", True):
+                try:
+                    info["subtitle"] = agents.proofread(self.cfg, info["subtitle"])
+                    info["transcribe_note"] += "+字幕核验"
+                except Exception as e:
+                    info["transcribe_note"] += f"（核验失败跳过：{e}）"
+        if not info["subtitle"]:
+            return {"ok": False, "error": f"未获取到字幕：{info.get('error') or '无字幕'}", "info": info}
+        try:
+            doc = agents.summarize(self.cfg, info)
+        except Exception as e:
+            return {"ok": False, "error": f"生成失败：{e}", "info": info}
+        saved = _save_output(url, info, doc)
+        self.current_doc = doc
+        return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved}
+
+
+def main():
+    api = Api()
+    webview.create_window(
+        "视频学习助手",
+        os.path.join(WEB_DIR, "index.html"),
+        js_api=api,
+        width=1000,
+        height=750,
+    )
+    webview.start()
