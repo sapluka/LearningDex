@@ -447,9 +447,9 @@ function onDocDblClick(e) {
 
 async function askSelection(selection, question) {
   docChatPush("user", "引用：" + selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
+  docChatPush("ai", "");
   try {
-    const r = await api.ask_selection(selection, question);
-    docChatPush("ai", r.ok ? r.reply : "错误：" + r.error);
+    await api.ask_selection(selection, question);
   } catch (e) {
     docChatPush("ai", "异常：" + e);
   }

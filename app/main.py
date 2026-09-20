@@ -92,11 +92,18 @@ class Api:
         self._emit_js("window.__chatDone && window.__chatDone()")
 
     def ask_selection(self, selection, question):
+        threading.Thread(target=self._ask_worker, args=(selection, question), daemon=True).start()
+        return {"ok": True}
+
+    def _ask_worker(self, selection, question):
         try:
-            reply = agents.answer_selection(self.cfg, selection, question, doc=self.current_doc)
+            for chunk in agents.answer_selection_stream(self.cfg, selection, question, self.current_doc):
+                self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
+                              % json.dumps(chunk, ensure_ascii=False))
         except Exception as e:
-            return {"ok": False, "error": str(e)}
-        return {"ok": True, "reply": reply}
+            self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
+                          % json.dumps("\n[错误] " + str(e), ensure_ascii=False))
+        self._emit_js("window.__chatDone && window.__chatDone()")
 
     def _fav_path(self):
         return os.path.join(_state_dir(self.cfg), "favorites.json")

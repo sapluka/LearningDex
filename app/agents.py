@@ -102,6 +102,14 @@ def answer_selection(cfg, selection, question, doc=None):
     return llm.text(cfg, msgs)
 
 
+def answer_selection_stream(cfg, selection, question, doc=None):
+    msgs = [
+        {"role": "system", "content": CHAT_SYSTEM + _doc_block(doc)},
+        {"role": "user", "content": f"文档选中内容：\n{selection}\n\n问题：{question}"},
+    ]
+    yield from llm.stream(cfg, msgs)
+
+
 def explain_term(cfg, term):
     msgs = [
         {"role": "system", "content": "你是一个词典。请用中文简明解释下列术语，并给出简短例子。"},
