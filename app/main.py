@@ -37,6 +37,7 @@ class Api:
         self.cfg = config.load()
         self.history = []
         self.current_doc = None
+        self.current_url = ""
 
     def load_config(self):
         return self.cfg
@@ -76,6 +77,32 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "reply": reply}
+
+    def list_tasks(self):
+        d = _state_dir(self.cfg)
+        out = []
+        if os.path.isdir(d):
+            for name in sorted(os.listdir(d), reverse=True):
+                p = os.path.join(d, name)
+                if os.path.isdir(p):
+                    out.append({
+                        "id": name,
+                        "has_doc": os.path.exists(os.path.join(p, "doc.md")),
+                        "mtime": os.path.getmtime(p),
+                    })
+        return {"ok": True, "tasks": out}
+
+    def load_task(self, tid):
+        if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
+            return {"ok": False, "error": "非法任务标识"}
+        p = os.path.join(_state_dir(self.cfg), tid, "doc.md")
+        if not os.path.exists(p):
+            return {"ok": False, "error": "未找到该任务的文档"}
+        with open(p, encoding="utf-8") as f:
+            doc = f.read()
+        self.current_doc = doc
+        self.current_url = "https://www.bilibili.com/video/" + tid
+        return {"ok": True, "doc": doc, "id": tid}
 
     def list_skills(self):
         return {"ok": True, "skills": skills.list_skills()}

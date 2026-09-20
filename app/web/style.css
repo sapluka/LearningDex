@@ -487,6 +487,34 @@ body {
   resize: vertical;
 }
 
+.task-list {
+  max-height: 300px;
+  overflow: auto;
+  margin-bottom: 10px;
+}
+
+.task-item {
+  padding: 8px 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.task-item:hover {
+  background: #f0f2ff;
+}
+
+.task-item .t-id {
+  font-weight: 600;
+}
+
+.task-item .t-sub {
+  color: #999;
+  font-size: 12px;
+}
+
 /* 对话气泡 */
 .bub {
   padding: 9px 12px;

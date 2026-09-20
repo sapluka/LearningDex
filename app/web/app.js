@@ -124,6 +124,8 @@ async function init() {
     const s = currentSkills.find((x) => x.name === $("skillSelect").value);
     if (s) { $("skillName").value = s.name; $("skillContent").value = s.content; }
   };
+  $("taskBtn").onclick = openTasks;
+  $("tasksClose").onclick = () => ($("tasksModal").hidden = true);
   document.querySelectorAll(".toolbar .tb").forEach((b) => {
     b.onclick = () => wrapSelection(b.dataset.wrap);
   });
@@ -469,6 +471,41 @@ async function deleteSkill() {
   await api.delete_skill(name);
   $("skillContent").value = "";
   await openSkills();
+}
+
+async function openTasks() {
+  const r = await api.list_tasks();
+  const list = $("taskList");
+  list.innerHTML = "";
+  const tasks = r.tasks || [];
+  if (!tasks.length) list.innerHTML = '<div class="msg">暂无历史任务</div>';
+  for (const t of tasks) {
+    const d = el("div", "task-item");
+    const id = el("div", "t-id"); id.textContent = t.id;
+    const sub = el("div", "t-sub");
+    sub.textContent = (t.has_doc ? "有文档" : "无文档") + " · " + new Date(t.mtime * 1000).toLocaleString();
+    d.appendChild(id); d.appendChild(sub);
+    if (t.has_doc) d.onclick = () => loadTask(t.id);
+    list.appendChild(d);
+  }
+  $("tasksModal").hidden = false;
+}
+
+async function loadTask(id) {
+  const r = await api.load_task(id);
+  if (!r.ok) return;
+  currentUrl = "https://www.bilibili.com/video/" + id;
+  $("welcome").hidden = true;
+  $("workspace").hidden = false;
+  $("docTitle").textContent = id;
+  $("meta").textContent = "已载入历史任务";
+  setMarkdown(r.doc);
+  docTerms = [];
+  annotations = [];
+  renderNotes();
+  hideTermBoxes();
+  scheduleHighlights();
+  $("tasksModal").hidden = true;
 }
 
 async function saveSettings() {
