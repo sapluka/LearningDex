@@ -49,7 +49,7 @@
 
 **推导图（derivation graph）**：学习笔记中除截图外，还包含**推导图**（非截图，用以帮助用户理解内容）。
 
-**待办**：截图时机识别方案待调研（候选：bradautomates/claude-video），确认后细化。
+**待办**：截图时机识别方案待调研（参考项目：https://github.com/Luke-Evan/videobook 、bradautomates/claude-video），确认后细化。
 
 ## 4.3 导出目录结构
 
