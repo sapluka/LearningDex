@@ -126,6 +126,9 @@ async function init() {
   };
   $("taskBtn").onclick = openTasks;
   $("tasksClose").onclick = () => ($("tasksModal").hidden = true);
+  $("favBtn").onclick = openFavorites;
+  $("favsClose").onclick = () => ($("favsModal").hidden = true);
+  $("favDocBtn").onclick = toggleCurrentFav;
   document.querySelectorAll(".toolbar .tb").forEach((b) => {
     b.onclick = () => wrapSelection(b.dataset.wrap);
   });
@@ -506,6 +509,35 @@ async function loadTask(id) {
   hideTermBoxes();
   scheduleHighlights();
   $("tasksModal").hidden = true;
+}
+
+function bvidOf(url) {
+  const m = /BV[0-9A-Za-z]+/.exec(url || "");
+  return m ? m[0] : "";
+}
+
+async function openFavorites() {
+  const r = await api.list_favorites();
+  const list = $("favList");
+  list.innerHTML = "";
+  const favs = r.favorites || [];
+  if (!favs.length) list.innerHTML = '<div class="msg">暂无收藏</div>';
+  for (const f of favs) {
+    const d = el("div", "task-item");
+    const id = el("div", "t-id"); id.textContent = f.title || f.id;
+    const sub = el("div", "t-sub"); sub.textContent = f.id;
+    d.appendChild(id); d.appendChild(sub);
+    d.onclick = () => loadTask(f.id);
+    list.appendChild(d);
+  }
+  $("favsModal").hidden = false;
+}
+
+async function toggleCurrentFav() {
+  const id = bvidOf(currentUrl);
+  if (!id) return;
+  const r = await api.toggle_favorite(id, $("docTitle").textContent);
+  if (r.ok) $("favDocBtn").textContent = r.favorited ? "★" : "☆";
 }
 
 async function saveSettings() {

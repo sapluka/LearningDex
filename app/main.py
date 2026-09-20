@@ -78,6 +78,34 @@ class Api:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "reply": reply}
 
+    def _fav_path(self):
+        return os.path.join(_state_dir(self.cfg), "favorites.json")
+
+    def _load_fav(self):
+        try:
+            with open(self._fav_path(), encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except (OSError, json.JSONDecodeError):
+            return []
+
+    def list_favorites(self):
+        return {"ok": True, "favorites": self._load_fav()}
+
+    def toggle_favorite(self, tid, title=""):
+        if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
+            return {"ok": False, "error": "非法任务标识"}
+        favs = self._load_fav()
+        was = any(f.get("id") == tid for f in favs)
+        if was:
+            favs = [f for f in favs if f.get("id") != tid]
+        else:
+            favs.insert(0, {"id": tid, "title": title or tid})
+        os.makedirs(_state_dir(self.cfg), exist_ok=True)
+        with open(self._fav_path(), "w", encoding="utf-8") as f:
+            json.dump(favs, f, ensure_ascii=False, indent=2)
+        return {"ok": True, "favorited": not was, "favorites": favs}
+
     def list_tasks(self):
         d = _state_dir(self.cfg)
         out = []
