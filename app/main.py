@@ -10,6 +10,10 @@ WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
 
 
+def _normalize_md(md):
+    return (md or "").replace("\\==", "==")
+
+
 def _save_output(url, info, doc):
     m = re.search(r"BV[0-9A-Za-z]+", url)
     folder = os.path.join(STATE_DIR, m.group(0) if m else "video")
@@ -95,7 +99,7 @@ class Api:
         if isinstance(path, (list, tuple)):
             path = path[0]
         with open(path, "w", encoding="utf-8") as f:
-            f.write(content or "")
+            f.write(_normalize_md(content))
         return {"ok": True, "path": path}
 
     def end_study(self, url, final_md):
@@ -104,7 +108,7 @@ class Api:
         os.makedirs(folder, exist_ok=True)
         p = os.path.join(folder, "final.md")
         with open(p, "w", encoding="utf-8") as f:
-            f.write(final_md or "")
+            f.write(_normalize_md(final_md))
         return {"ok": True, "path": p}
 
     def extract(self, url):

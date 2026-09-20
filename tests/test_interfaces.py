@@ -56,5 +56,16 @@ class TestChatHistory(unittest.TestCase):
         ])
 
 
+class TestNormalizeMd(unittest.TestCase):
+    def test_unescape_highlight(self):
+        self.assertEqual(main._normalize_md("\\==x==\n"), "==x==\n")
+
+    def test_keep_normal(self):
+        self.assertEqual(main._normalize_md("==x=="), "==x==")
+
+    def test_empty(self):
+        self.assertEqual(main._normalize_md(None), "")
+
+
 if __name__ == "__main__":
     unittest.main()

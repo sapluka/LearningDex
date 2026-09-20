@@ -33,6 +33,27 @@ function getMarkdown() {
   return md;
 }
 
+function wrapSelection(marker) {
+  editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const { from, to } = view.state.selection;
+    const text = view.state.doc.textBetween(from, to, "");
+    if (!text) return;
+    view.dispatch(view.state.tr.insertText(marker + text + marker, from, to));
+  });
+  scheduleHighlights();
+}
+
+window._selectAll = () => {
+  editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const state = view.state;
+    const TS = state.selection.constructor;
+    const sel = TS.create(state.doc, 1, Math.max(1, state.doc.content.size - 1));
+    view.dispatch(state.tr.setSelection(sel));
+  });
+};
+
 window._setMarkdown = setMarkdown;
 window._getMarkdown = getMarkdown;
 window._renderHighlights = renderHighlights;
@@ -90,6 +111,9 @@ async function init() {
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
   $("testBtn").onclick = testConnection;
+  document.querySelectorAll(".toolbar .tb").forEach((b) => {
+    b.onclick = () => wrapSelection(b.dataset.wrap);
+  });
   $("editor").addEventListener("mouseup", onDocMouseUp);
   $("editor").addEventListener("dblclick", onDocDblClick);
   $("editor").addEventListener("scroll", hideTermBoxes);

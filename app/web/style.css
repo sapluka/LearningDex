@@ -265,6 +265,26 @@ body {
   margin: 6px 2px;
 }
 
+.toolbar {
+  display: flex;
+  gap: 6px;
+  margin: 6px 2px;
+}
+
+.tb {
+  width: 30px;
+  height: 26px;
+  border: 1px solid #e0e0e5;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tb:hover {
+  background: #f0f2ff;
+}
+
 .editor {
   flex: 1;
   overflow: auto;
