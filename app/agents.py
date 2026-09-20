@@ -59,6 +59,12 @@ def chat(cfg, history, question, doc=None):
     return llm.text(cfg, msgs)
 
 
+def chat_stream(cfg, history, question, doc=None):
+    msgs = [{"role": "system", "content": CHAT_SYSTEM + _doc_block(doc)}] + history
+    msgs.append({"role": "user", "content": question})
+    yield from llm.stream(cfg, msgs)
+
+
 def answer_selection(cfg, selection, question, doc=None):
     msgs = [
         {"role": "system", "content": CHAT_SYSTEM + _doc_block(doc)},

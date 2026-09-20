@@ -47,9 +47,13 @@ class TestChatHistory(unittest.TestCase):
     def test_chat_appends_history(self):
         api = main.Api()
         api.cfg = {}
-        with mock.patch.object(agents, "chat", return_value="好"):
+        with mock.patch.object(agents, "chat_stream", side_effect=lambda *a, **k: iter(["好"])):
             r = api.chat("问题")
-        self.assertTrue(r["ok"])
+            self.assertTrue(r["ok"])
+            for _ in range(100):
+                if len(api.history) >= 2:
+                    break
+                time.sleep(0.02)
         self.assertEqual(api.history, [
             {"role": "user", "content": "问题"},
             {"role": "assistant", "content": "好"},

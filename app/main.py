@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import threading
 
 import webview
 
@@ -63,13 +64,29 @@ class Api:
             pass
 
     def chat(self, message):
+        threading.Thread(target=self._chat_worker, args=(message,), daemon=True).start()
+        return {"ok": True}
+
+    def _emit_js(self, js):
         try:
-            reply = agents.chat(self.cfg, self.history, message, doc=self.current_doc)
+            if webview.windows:
+                webview.windows[0].evaluate_js(js)
+        except Exception:
+            pass
+
+    def _chat_worker(self, message):
+        buf = []
+        try:
+            for chunk in agents.chat_stream(self.cfg, self.history, message, self.current_doc):
+                buf.append(chunk)
+                self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
+                              % json.dumps(chunk, ensure_ascii=False))
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
+                          % json.dumps("\n[错误] " + str(e), ensure_ascii=False))
         self.history.append({"role": "user", "content": message})
-        self.history.append({"role": "assistant", "content": reply})
-        return {"ok": True, "reply": reply}
+        self.history.append({"role": "assistant", "content": "".join(buf)})
+        self._emit_js("window.__chatDone && window.__chatDone()")
 
     def ask_selection(self, selection, question):
         try:

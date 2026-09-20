@@ -21,5 +21,19 @@ def text(cfg, messages, **kw):
     return r.choices[0].message.content
 
 
+def stream(cfg, messages, **kw):
+    kw.setdefault("api_key", cfg.get("api_key") or None)
+    if cfg.get("base_url"):
+        kw.setdefault("api_base", cfg["base_url"])
+    kw["stream"] = True
+    for chunk in litellm.completion(model=full_model(cfg), messages=messages, **kw):
+        try:
+            delta = chunk.choices[0].delta.content
+        except Exception:
+            delta = None
+        if delta:
+            yield delta
+
+
 def test_connection(cfg):
     return text(cfg, [{"role": "user", "content": "ping"}], max_tokens=5)

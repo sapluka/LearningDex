@@ -197,19 +197,21 @@ async function sendChat() {
   if (!q) return;
   $("chatInput").value = "";
   docChatPush("user", q);
+  docChatPush("ai", "");
   try {
-    const r = await api.chat(q);
-    docChatPush("ai", r.ok ? r.reply : "错误：" + r.error);
+    await api.chat(q);
   } catch (e) {
     docChatPush("ai", "异常：" + e);
   }
 }
 
 function ensureChatLog() {
-  if (chatLog.querySelector(".chat-empty") || chatLog.innerHTML === "") {
-    chatLog.style.display = "flex";
-    chatLog.innerHTML = "";
-  }
+  const hint = chatLog.querySelector(".chat-empty");
+  if (hint) hint.remove();
+  chatLog.style.display = "flex";
+  chatLog.style.flexDirection = "column";
+  chatLog.style.alignItems = "stretch";
+  chatLog.style.justifyContent = "flex-start";
 }
 
 function docChatPush(kind, text) {
@@ -218,7 +220,17 @@ function docChatPush(kind, text) {
   b.textContent = text;
   chatLog.appendChild(b);
   chatLog.scrollTop = chatLog.scrollHeight;
+  return b;
 }
+
+window.__chatChunk = (t) => {
+  ensureChatLog();
+  let last = chatLog.lastElementChild;
+  if (!last || !last.classList.contains("ai")) last = docChatPush("ai", "");
+  last.textContent += t;
+  chatLog.scrollTop = chatLog.scrollHeight;
+};
+window.__chatDone = () => {};
 
 function hideTermBoxes() {
   termLayer.innerHTML = "";
@@ -373,11 +385,13 @@ function onDocDblClick(e) {
 }
 
 async function askSelection(selection, question) {
-  const r = await api.ask_selection(selection, question);
-  chatLog.style.display = "flex";
-  chatLog.innerHTML = "";
-  docChatPush("user", selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
-  docChatPush("ai", r.ok ? r.reply : "错误：" + r.error);
+  docChatPush("user", "引用：" + selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
+  try {
+    const r = await api.ask_selection(selection, question);
+    docChatPush("ai", r.ok ? r.reply : "错误：" + r.error);
+  } catch (e) {
+    docChatPush("ai", "异常：" + e);
+  }
 }
 
 async function lookupTerm(term) {
