@@ -179,10 +179,10 @@ async function startParse() {
     $("meta").textContent =
       `${info.uploader || ""} ${info.duration ? Math.round(info.duration / 60) + "分钟" : ""}` +
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
-    setMarkdown(r.doc);
+    imgDir = r.taskdir || "";
+    setMarkdown(mdForDisplay(r.doc));
     docTerms = r.terms || [];
     annotations = [];
-    imgDir = r.taskdir || "";
     renderNotes();
     hideTermBoxes();
     scheduleHighlights();
@@ -257,11 +257,27 @@ function scheduleHighlights() {
 
 function fixImages() {
   if (!imgDir) return;
-  const base = "file:///" + imgDir.replace(/\\/g, "/").replace(/^\/+/, "");
+  const base = absBase();
   document.querySelectorAll("#editor img").forEach((im) => {
     const s = im.getAttribute("src") || "";
     if (s.startsWith("images/")) im.setAttribute("src", base + "/" + s);
   });
+}
+
+function absBase() {
+  return imgDir ? "file:///" + imgDir.replace(/\\/g, "/").replace(/^\/+/, "") : "";
+}
+
+function mdForDisplay(md) {
+  const b = absBase();
+  return b ? (md || "").replace(/\]\(images\//g, "](" + b + "/images/") : (md || "");
+}
+
+function mdForExport() {
+  let md = getMarkdown();
+  const b = absBase();
+  if (b) md = md.split(b + "/").join("");
+  return md;
 }
 
 function drawRect(node, from, to, base, cls) {
@@ -458,7 +474,7 @@ function renderNotes() {
 }
 
 function buildExportMd() {
-  let md = getMarkdown();
+  let md = mdForExport();
   const defs = [];
   annotations.forEach((a, i) => {
     const n = i + 1;
@@ -537,10 +553,10 @@ async function loadTask(id) {
   $("workspace").hidden = false;
   $("docTitle").textContent = id;
   $("meta").textContent = "已载入历史任务";
-  setMarkdown(r.doc);
+  imgDir = r.taskdir || "";
+  setMarkdown(mdForDisplay(r.doc));
   docTerms = [];
   annotations = [];
-  imgDir = r.taskdir || "";
   renderNotes();
   hideTermBoxes();
   scheduleHighlights();
@@ -604,8 +620,8 @@ async function loadHistory(tid) {
     $("workspace").hidden = false;
     $("docTitle").textContent = tid;
     $("meta").textContent = "已载入历史任务";
-    setMarkdown(r.doc);
     imgDir = r.taskdir || "";
+    setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
     setTimeout(fixImages, 400);
   }
