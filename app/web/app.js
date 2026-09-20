@@ -226,10 +226,31 @@ function ensureChatLog() {
   chatLog.style.justifyContent = "flex-start";
 }
 
+function renderBubble(b) {
+  const raw = b.dataset.raw || "";
+  if (window.marked) {
+    b.innerHTML = window.marked.parse(raw, { breaks: true, gfm: true });
+  } else {
+    b.textContent = raw;
+  }
+  if (window.renderMathInElement) {
+    try {
+      window.renderMathInElement(b, { delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\[", right: "\\]", display: true },
+        { left: "$", right: "$", display: false },
+        { left: "\\(", right: "\\)", display: false },
+      ] });
+    } catch (e) { /* ignore */ }
+  }
+}
+
 function docChatPush(kind, text) {
   ensureChatLog();
   const b = el("div", "bub " + (kind === "user" ? "user" : "ai"));
-  b.textContent = text;
+  b.dataset.raw = text || "";
+  if (kind === "user") b.textContent = text || "";
+  else renderBubble(b);
   chatLog.appendChild(b);
   chatLog.scrollTop = chatLog.scrollHeight;
   return b;
@@ -239,10 +260,14 @@ window.__chatChunk = (t) => {
   ensureChatLog();
   let last = chatLog.lastElementChild;
   if (!last || !last.classList.contains("ai")) last = docChatPush("ai", "");
-  last.textContent += t;
+  last.dataset.raw = (last.dataset.raw || "") + t;
+  last.textContent = last.dataset.raw;
   chatLog.scrollTop = chatLog.scrollHeight;
 };
-window.__chatDone = () => {};
+window.__chatDone = () => {
+  const last = chatLog.lastElementChild;
+  if (last && last.classList.contains("ai")) renderBubble(last);
+};
 
 function hideTermBoxes() {
   termLayer.innerHTML = "";
