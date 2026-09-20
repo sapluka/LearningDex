@@ -637,3 +637,14 @@ body {
 .note-item .q {
   color: #999;
 }
+
+.note-del {
+  float: right;
+  color: #bbb;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.note-del:hover {
+  color: #e33;
+}

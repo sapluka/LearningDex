@@ -488,14 +488,19 @@ function renderNotes() {
   list.innerHTML = "";
   if (!annotations.length) { panel.hidden = true; return; }
   panel.hidden = false;
-  for (const a of annotations) {
+  annotations.forEach((a, i) => {
     const d = el("div", "note-item");
     const q = el("span", "q");
     q.textContent = "「" + a.quote.slice(0, 20) + (a.quote.length > 20 ? "…" : "") + "」 ";
     d.appendChild(q);
     d.appendChild(document.createTextNode(a.note));
+    const del = el("span", "note-del");
+    del.textContent = "×";
+    del.title = "删除批注";
+    del.onclick = () => { annotations.splice(i, 1); renderNotes(); };
+    d.appendChild(del);
     list.appendChild(d);
-  }
+  });
 }
 
 function buildExportMd() {
