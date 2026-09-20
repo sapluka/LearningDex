@@ -126,7 +126,14 @@ def transcribe(path, model_size="base", language="zh"):
         model = WhisperModel(ensure_model(model_size), device="cpu", compute_type="int8")
         used = f"{model_size}(cpu)"
     segments, _info = model.transcribe(path, language=language, vad_filter=True)
-    return "".join(s.text for s in segments).strip(), used
+    parts = []
+    segs = []
+    for s in segments:
+        parts.append(s.text)
+        t = (s.text or "").strip()
+        if t:
+            segs.append({"from": s.start, "to": s.end, "text": t})
+    return "".join(parts).strip(), used, segs
 
 
 def transcribe_video(url, cfg=None, model_size="base"):
@@ -134,6 +141,6 @@ def transcribe_video(url, cfg=None, model_size="base"):
     path, _downloaded = download_audio(url, cfg)
     dl = round(time.time() - start, 1)
     start = time.time()
-    text, used = transcribe(path, model_size=model_size)
+    text, used, segs = transcribe(path, model_size=model_size)
     asr = round(time.time() - start, 1)
-    return {"subtitle": text, "used": used, "download_s": dl, "asr_s": asr, "audio": path}
+    return {"subtitle": text, "used": used, "segments": segs, "download_s": dl, "asr_s": asr, "audio": path}

@@ -196,57 +196,70 @@ def _wbi_sign(params, img_key, sub_key):
     return params
 
 
-def _bili_subtitle(bvid):
+def _bili_segments(bvid):
     if not bvid:
-        return ""
+        return []
     try:
         obj = _download_json("https://api.bilibili.com/x/web-interface/view?bvid=" + bvid)
         cid = (obj.get("data") or {}).get("cid")
         if not cid:
-            return ""
+            return []
         img_key, sub_key = _wbi_keys()
         params = _wbi_sign({"bvid": bvid, "cid": int(cid)}, img_key, sub_key)
         pobj = _download_json("https://api.bilibili.com/x/player/wbi/v2?" + urllib.parse.urlencode(params))
         subs = ((pobj.get("data") or {}).get("subtitle") or {}).get("subtitles") or []
         if not subs:
-            return ""
+            return []
         s = _pick_bili_sub(subs)
         u = s.get("subtitle_url") or ""
         if u and not u.startswith("http"):
             u = "https:" + u
-        return _subtitle_text(u) if u else ""
+        return _subtitle_segments(u) if u else []
     except Exception:
-        return ""
+        return []
 
 
-def _subtitle_text(url):
+def _subtitle_segments(url):
     obj = _download_json(url)
     body = obj.get("body") or (obj.get("data") or {}).get("body") or []
-    segs = [s.get("content", "").strip() for s in body if s.get("content")]
-    return "\n".join(segs)
+    segs = []
+    for s in body:
+        c = (s.get("content") or "").strip()
+        if not c:
+            continue
+        try:
+            fr = float(s.get("from")) if s.get("from") is not None else None
+        except (TypeError, ValueError):
+            fr = None
+        try:
+            to = float(s.get("to")) if s.get("to") is not None else None
+        except (TypeError, ValueError):
+            to = None
+        segs.append({"from": fr, "to": to, "text": c})
+    return segs
 
 
 def _extract(url, opts):
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
     sub_url = _pick(info.get("subtitles")) or _pick(info.get("automatic_captions"))
-    text = ""
+    segs = []
     err = ""
     if sub_url:
         try:
-            text = _subtitle_text(sub_url)
+            segs = _subtitle_segments(sub_url)
         except Exception as e:
             err = str(e)
-    if not text and "bilibili" in urllib.parse.urlparse(url).netloc.lower():
+    if not segs and "bilibili" in urllib.parse.urlparse(url).netloc.lower():
         m = re.search(r"BV[0-9A-Za-z]+", url)
-        t2 = _bili_subtitle(m.group(0) if m else None)
-        if t2:
-            text = t2
+        segs = _bili_segments(m.group(0) if m else None)
+    text = "\n".join(s["text"] for s in segs)
     return {
         "title": info.get("title", ""),
         "uploader": info.get("uploader", ""),
         "duration": info.get("duration"),
         "subtitle": text,
+        "segments": segs,
         "error": err,
     }
 

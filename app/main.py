@@ -270,6 +270,7 @@ class Api:
             except Exception as e:
                 return {"ok": False, "error": f"语音转写失败：{e}", "info": info}
             info["subtitle"] = tr["subtitle"]
+            info["segments"] = tr.get("segments") or []
             info["transcribe_note"] = f"本地语音转写[{tr.get('used', '?')}]（下载{tr['download_s']}s+识别{tr['asr_s']}s）"
             if self.cfg.get("proofread", True):
                 self._emit("正在核验字幕")
