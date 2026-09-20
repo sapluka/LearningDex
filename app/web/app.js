@@ -12,6 +12,7 @@ const chatLog = $("chatLog");
 const termLayer = $("termLayer");
 const hlLayer = $("hlLayer");
 let docTerms = [];
+let annotations = [];
 window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
@@ -153,6 +154,8 @@ async function startParse() {
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     setMarkdown(r.doc);
     docTerms = r.terms || [];
+    annotations = [];
+    renderNotes();
     hideTermBoxes();
     scheduleHighlights();
     stateEl.textContent = "完成，可编辑文档";
@@ -325,8 +328,23 @@ function onDocMouseUp(e) {
   b1.onclick = () => { closePop("selectPop"); askSelection(text, ""); };
   const b2 = el("button", ""); b2.textContent = "网页搜索所选内容";
   b2.onclick = () => { closePop("selectPop"); lookupTerm(text); };
+  const b3 = el("button", ""); b3.textContent = "添加批注";
+  b3.onclick = () => {
+    pop.innerHTML = "";
+    const inp = document.createElement("input");
+    inp.placeholder = "输入批注…";
+    inp.style.width = "150px";
+    const ok = el("button", ""); ok.textContent = "保存";
+    ok.onclick = () => {
+      const note = inp.value.trim();
+      if (note) { annotations.push({ quote: text, note }); renderNotes(); }
+      closePop("selectPop");
+    };
+    pop.appendChild(inp); pop.appendChild(ok); inp.focus();
+  };
   pop.appendChild(b1);
   pop.appendChild(b2);
+  pop.appendChild(b3);
   pop.style.left = Math.min(rect.left, innerWidth - 180) + "px";
   pop.style.top = rect.bottom + 8 + "px";
 }
@@ -372,6 +390,41 @@ function closePops() {
 
 function closePop(id) { $(id).hidden = true; }
 
+function renderNotes() {
+  const panel = $("notes");
+  const list = $("notesList");
+  list.innerHTML = "";
+  if (!annotations.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  for (const a of annotations) {
+    const d = el("div", "note-item");
+    const q = el("span", "q");
+    q.textContent = "「" + a.quote.slice(0, 20) + (a.quote.length > 20 ? "…" : "") + "」 ";
+    d.appendChild(q);
+    d.appendChild(document.createTextNode(a.note));
+    list.appendChild(d);
+  }
+}
+
+function buildExportMd() {
+  let md = getMarkdown();
+  const defs = [];
+  annotations.forEach((a, i) => {
+    const n = i + 1;
+    const idx = md.indexOf(a.quote);
+    if (idx >= 0) {
+      const at = idx + a.quote.length;
+      md = md.slice(0, at) + "[^" + n + "]" + md.slice(at);
+    }
+    defs.push("[^" + n + "]: " + a.note);
+  });
+  if (defs.length) md = md.replace(/\s+$/, "") + "\n\n" + defs.join("\n") + "\n";
+  return md;
+}
+
+window._addNote = (q, n) => { annotations.push({ quote: q, note: n }); renderNotes(); };
+window._exportMd = buildExportMd;
+
 async function saveSettings() {
   await api.save_config(readSettings());
   $("setMsg").textContent = "已保存";
@@ -384,7 +437,7 @@ async function testConnection() {
 }
 
 async function endStudy() {
-  const md = getMarkdown();
+  const md = buildExportMd();
   const r = await api.end_study(currentUrl, md);
   const btn = $("endStudyBtn");
   btn.textContent = "已保存：" + (r.ok ? "final.md" : r.error);

@@ -571,3 +571,31 @@ body {
   background: #eaf6ec;
   color: #2e7d32;
 }
+
+/* 批注面板 */
+.notes {
+  border-top: 1px solid #ececf0;
+  padding: 8px 2px 0;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.notes-title {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.note-item {
+  font-size: 12px;
+  color: #444;
+  padding: 4px 6px;
+  border-left: 3px solid #ffd600;
+  background: #fffbe6;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.note-item .q {
+  color: #999;
+}
