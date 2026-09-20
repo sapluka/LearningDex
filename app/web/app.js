@@ -2,6 +2,7 @@ import { Editor, rootCtx, editorViewCtx, parserCtx, serializerCtx } from "https:
 import { commonmark } from "https://esm.sh/@milkdown/preset-commonmark@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
+import { math } from "https://esm.sh/@milkdown/plugin-math@7";
 
 let api = null;
 let editor = null;
@@ -100,10 +101,16 @@ async function init() {
     .use(nord)
     .use(commonmark)
     .use(history)
+    .use(math)
     .create();
   window.editor = editor;
   editor._setMarkdown = setMarkdown;
   editor._getMarkdown = getMarkdown;
+  document.querySelectorAll("#editor [contenteditable], #editor .ProseMirror").forEach((e) => {
+    e.setAttribute("spellcheck", "false");
+    e.setAttribute("autocorrect", "off");
+    e.setAttribute("autocapitalize", "off");
+  });
   bind();
   $("startBtn").onclick = startParse;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
