@@ -13,6 +13,7 @@ const termLayer = $("termLayer");
 const hlLayer = $("hlLayer");
 let docTerms = [];
 let annotations = [];
+let currentSkills = [];
 window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
@@ -114,6 +115,15 @@ async function init() {
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
   $("testBtn").onclick = testConnection;
+  $("skillBtn").onclick = openSkills;
+  $("skillClose").onclick = () => ($("skillsModal").hidden = true);
+  $("skillNew").onclick = () => { $("skillSelect").value = ""; $("skillName").value = ""; $("skillContent").value = ""; };
+  $("skillSave").onclick = saveSkill;
+  $("skillDelete").onclick = deleteSkill;
+  $("skillSelect").onchange = () => {
+    const s = currentSkills.find((x) => x.name === $("skillSelect").value);
+    if (s) { $("skillName").value = s.name; $("skillContent").value = s.content; }
+  };
   document.querySelectorAll(".toolbar .tb").forEach((b) => {
     b.onclick = () => wrapSelection(b.dataset.wrap);
   });
@@ -426,6 +436,40 @@ function buildExportMd() {
 
 window._addNote = (q, n) => { annotations.push({ quote: q, note: n }); renderNotes(); };
 window._exportMd = buildExportMd;
+
+async function openSkills() {
+  const r = await api.list_skills();
+  currentSkills = r.skills || [];
+  const sel = $("skillSelect");
+  sel.innerHTML = "";
+  for (const s of currentSkills) {
+    const o = document.createElement("option");
+    o.value = s.name; o.textContent = s.name;
+    sel.appendChild(o);
+  }
+  if (currentSkills.length) {
+    sel.value = currentSkills[0].name;
+    $("skillName").value = currentSkills[0].name;
+    $("skillContent").value = currentSkills[0].content;
+  }
+  $("skillsModal").hidden = false;
+}
+
+async function saveSkill() {
+  const name = $("skillName").value.trim();
+  if (!name) { $("skillMsg").textContent = "请填名称"; return; }
+  const r = await api.save_skill(name, $("skillContent").value);
+  $("skillMsg").textContent = r.ok ? "已保存" : ("失败：" + r.error);
+  if (r.ok) await openSkills();
+}
+
+async function deleteSkill() {
+  const name = $("skillName").value.trim();
+  if (!name) return;
+  await api.delete_skill(name);
+  $("skillContent").value = "";
+  await openSkills();
+}
 
 async function saveSettings() {
   await api.save_config(readSettings());

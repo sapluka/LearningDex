@@ -1,9 +1,5 @@
-import os
-
 from . import llm
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKILLS_DIR = os.path.join(ROOT, "skills")
+from .skills import get as _get_skill
 
 SYSTEM = (
     "你是视频学习助手。请将下方视频字幕整理成结构化的中文学习文档（markdown 格式），"
@@ -18,15 +14,7 @@ PROOF_SYSTEM = (
 
 def load_skill(name):
     """从 skills 目录加载讲解 prompt（预留接口）。缺失返回 None。"""
-    for ext in (".md", ".txt"):
-        p = os.path.join(SKILLS_DIR, name + ext)
-        if os.path.exists(p):
-            try:
-                with open(p, encoding="utf-8") as f:
-                    return f.read().strip()
-            except OSError:
-                return None
-    return None
+    return _get_skill(name)
 
 
 def lecture_system():

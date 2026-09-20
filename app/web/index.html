@@ -157,6 +157,28 @@
     </div>
   </div>
 
+  <!-- Skills 管理弹层 -->
+  <div id="skillsModal" class="modal" hidden>
+    <div class="modal-box">
+      <h2>Skills 管理</h2>
+      <div class="row">
+        <select id="skillSelect"></select>
+        <button id="skillNew">新建</button>
+        <button id="skillDelete">删除</button>
+      </div>
+      <div class="row">
+        <label>名称</label>
+        <input id="skillName" placeholder="如 讲解">
+      </div>
+      <textarea id="skillContent" rows="10" placeholder="技能提示词内容…"></textarea>
+      <div class="row right">
+        <span id="skillMsg" class="msg"></span>
+        <button class="btn primary" id="skillSave">保存</button>
+        <button class="btn" id="skillClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>

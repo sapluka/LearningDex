@@ -4,7 +4,7 @@ import re
 
 import webview
 
-from . import agents, config, llm, search, subtitle, transcribe
+from . import agents, config, llm, search, skills, subtitle, transcribe
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -76,6 +76,17 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "reply": reply}
+
+    def list_skills(self):
+        return {"ok": True, "skills": skills.list_skills()}
+
+    def save_skill(self, name, content):
+        if skills.save(name, content):
+            return {"ok": True}
+        return {"ok": False, "error": "非法技能名"}
+
+    def delete_skill(self, name):
+        return {"ok": skills.delete(name)}
 
     def explain(self, term):
         try:

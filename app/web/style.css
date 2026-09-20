@@ -477,6 +477,16 @@ body {
   justify-content: flex-end;
 }
 
+#skillContent {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e5;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
 /* 对话气泡 */
 .bub {
   padding: 9px 12px;
