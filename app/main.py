@@ -171,7 +171,8 @@ class Api:
             with open(dp, encoding="utf-8") as f:
                 doc = f.read()
             self.current_doc = doc
-        return {"ok": True, "id": tid, "history": self.history, "doc": doc}
+        return {"ok": True, "id": tid, "history": self.history, "doc": doc,
+                "taskdir": os.path.join(_state_dir(self.cfg), tid)}
 
     def list_tasks(self):
         d = _state_dir(self.cfg)
@@ -197,7 +198,8 @@ class Api:
             doc = f.read()
         self.current_doc = doc
         self.current_url = "https://www.bilibili.com/video/" + tid
-        return {"ok": True, "doc": doc, "id": tid}
+        return {"ok": True, "doc": doc, "id": tid,
+                "taskdir": os.path.join(_state_dir(self.cfg), tid)}
 
     def list_skills(self):
         return {"ok": True, "skills": skills.list_skills()}
@@ -306,7 +308,8 @@ class Api:
             terms = agents.extract_terms(self.cfg, doc)
         except Exception:
             terms = []
-        return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved, "terms": terms}
+        return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved,
+                "terms": terms, "taskdir": os.path.join(_state_dir(self.cfg), bvid)}
 
 
 def main():

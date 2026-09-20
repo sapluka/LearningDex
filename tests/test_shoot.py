@@ -20,10 +20,6 @@ class TestShoot(unittest.TestCase):
         self.assertEqual(shoot._to_seconds("01:30"), 90)
         self.assertEqual(shoot._to_seconds("1:02:03"), 3723)
 
-    def test_hhmmss(self):
-        self.assertEqual(shoot._hhmmss(3723), "01:02:03")
-        self.assertEqual(shoot._hhmmss(0), "00:00:00")
-
     def test_capture_no_shots_returns_same(self):
         self.assertEqual(shoot.capture("no shots here", "u", "d", {}), "no shots here")
 

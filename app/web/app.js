@@ -15,6 +15,7 @@ const hlLayer = $("hlLayer");
 let docTerms = [];
 let annotations = [];
 let currentSkills = [];
+let imgDir = "";
 window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
@@ -181,9 +182,11 @@ async function startParse() {
     setMarkdown(r.doc);
     docTerms = r.terms || [];
     annotations = [];
+    imgDir = r.taskdir || "";
     renderNotes();
     hideTermBoxes();
     scheduleHighlights();
+    setTimeout(fixImages, 400);
     stateEl.textContent = "完成，可编辑文档";
     stateEl.style.color = "green";
     showChatHint();
@@ -252,6 +255,15 @@ function scheduleHighlights() {
   requestAnimationFrame(() => { hlScheduled = false; renderHighlights(); });
 }
 
+function fixImages() {
+  if (!imgDir) return;
+  const base = "file:///" + imgDir.replace(/\\/g, "/").replace(/^\/+/, "");
+  document.querySelectorAll("#editor img").forEach((im) => {
+    const s = im.getAttribute("src") || "";
+    if (s.startsWith("images/")) im.setAttribute("src", base + "/" + s);
+  });
+}
+
 function drawRect(node, from, to, base, cls) {
   const r = document.createRange();
   try {
@@ -271,8 +283,7 @@ function drawRect(node, from, to, base, cls) {
   }
 }
 
-function renderHighlights() {
-  hlLayer.innerHTML = "";
+function renderHighlights() {  hlLayer.innerHTML = "";
   const editorEl = $("editor");
   if (!editorEl || editorEl.closest("[hidden]")) return;
   const base = document.querySelector(".center").getBoundingClientRect();
@@ -464,6 +475,7 @@ function buildExportMd() {
 
 window._addNote = (q, n) => { annotations.push({ quote: q, note: n }); renderNotes(); };
 window._exportMd = buildExportMd;
+window._loadTask = loadTask;
 
 async function openSkills() {
   const r = await api.list_skills();
@@ -528,9 +540,11 @@ async function loadTask(id) {
   setMarkdown(r.doc);
   docTerms = [];
   annotations = [];
+  imgDir = r.taskdir || "";
   renderNotes();
   hideTermBoxes();
   scheduleHighlights();
+  setTimeout(fixImages, 400);
   $("tasksModal").hidden = true;
 }
 
@@ -591,7 +605,9 @@ async function loadHistory(tid) {
     $("docTitle").textContent = tid;
     $("meta").textContent = "已载入历史任务";
     setMarkdown(r.doc);
+    imgDir = r.taskdir || "";
     scheduleHighlights();
+    setTimeout(fixImages, 400);
   }
   const hist = r.history || [];
   chatLog.style.display = "flex";

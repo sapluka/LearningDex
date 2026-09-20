@@ -1,8 +1,8 @@
+import glob
 import os
 import re
 import subprocess
 import tempfile
-import time
 
 import yt_dlp
 
@@ -28,31 +28,20 @@ def _to_seconds(t):
     return parts[0] * 3600 + parts[1] * 60 + parts[2]
 
 
-def _hhmmss(sec):
-    sec = max(0, int(sec))
-    return f"{sec // 3600:02d}:{(sec % 3600) // 60:02d}:{sec % 60:02d}"
-
-
-def _grab(url, sec, imgdir, idx, cfg):
-    if not FFMPEG:
-        return None
-    start = max(0, sec - 1)
-    end = sec + 1
-    seg = os.path.join(tempfile.gettempdir(), f"learndex_shot_{idx}.mp4")
-    if os.path.exists(seg):
+def _download_video(url, cfg):
+    """下载整段视频（纯视频流，<=720p）到临时文件；返回路径或 None。"""
+    subtitle.configure(cfg)
+    tmpl = os.path.join(tempfile.gettempdir(), "learndex_src.%(ext)s")
+    for old in glob.glob(os.path.join(tempfile.gettempdir(), "learndex_src.*")):
         try:
-            os.remove(seg)
+            os.remove(old)
         except OSError:
             pass
-    subtitle.configure(cfg)
     opts = {
         "format": "bv*[height<=720]/bv*/b",
-        "outtmpl": seg,
+        "outtmpl": tmpl,
         "quiet": True,
         "noplaylist": True,
-        "ffmpeg_location": FFMPEG,
-        "download_sections": f"*{_hhmmss(start)}-{_hhmmss(end)}",
-        "merge_output_format": "mp4",
     }
     if "bilibili" in url.lower():
         opts["cookiefile"] = subtitle._cookie_source()
@@ -61,18 +50,19 @@ def _grab(url, sec, imgdir, idx, cfg):
             ydl.download([url])
     except Exception:
         return None
-    if not os.path.exists(seg):
+    files = glob.glob(os.path.join(tempfile.gettempdir(), "learndex_src.*"))
+    return files[0] if files else None
+
+
+def _frame(video, sec, out):
+    if not FFMPEG:
         return None
-    out = os.path.join(imgdir, f"shot_{idx}.jpg")
     try:
-        subprocess.run([FFMPEG, "-y", "-ss", "1", "-i", seg, "-frames:v", "1", "-q:v", "2", out],
-                       capture_output=True, timeout=60)
+        subprocess.run([FFMPEG, "-y", "-ss", str(max(0, sec)), "-i", video,
+                        "-frames:v", "1", "-q:v", "2", out],
+                       capture_output=True, timeout=120)
     except Exception:
         return None
-    try:
-        os.remove(seg)
-    except OSError:
-        pass
     return out if os.path.exists(out) else None
 
 
@@ -82,20 +72,26 @@ def capture(md, url, taskdir, cfg, validate=True):
         return md
     imgdir = os.path.join(taskdir, "images")
     os.makedirs(imgdir, exist_ok=True)
-    for idx, (full, cap, t) in enumerate(shots, 1):
-        sec = _to_seconds(t)
-        path = _grab(url, sec, imgdir, idx, cfg)
-        if not path:
-            continue
-        if validate:
-            from . import agents
-            if not agents.validate_frame(cfg, path, cap):
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
+    video = _download_video(url, cfg)
+    if not video:
+        return SHOT_RE.sub("", md)
+    try:
+        for idx, (full, cap, t) in enumerate(shots, 1):
+            out = os.path.join(imgdir, f"shot_{idx}.jpg")
+            if not _frame(video, _to_seconds(t), out):
                 continue
-        md = md.replace(full, f"![{cap}](images/shot_{idx}.jpg)")
-        time.sleep(0.2)
-    md = SHOT_RE.sub("", md)
-    return md
+            if validate:
+                from . import agents
+                if not agents.validate_frame(cfg, out, cap):
+                    try:
+                        os.remove(out)
+                    except OSError:
+                        pass
+                    continue
+            md = md.replace(full, f"![{cap}](images/shot_{idx}.jpg)")
+    finally:
+        try:
+            os.remove(video)
+        except OSError:
+            pass
+    return SHOT_RE.sub("", md)
