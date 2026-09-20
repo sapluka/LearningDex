@@ -484,6 +484,25 @@ body {
   z-index: 40;
 }
 
+/* ==高亮== 覆盖层 */
+.hl-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.hl-box {
+  position: absolute;
+  background: rgba(255, 214, 0, 0.35);
+  border-radius: 3px;
+}
+
+.hl-mask {
+  position: absolute;
+  background: #ffffff;
+}
+
 .term-box {
   position: absolute;
   background: rgba(79, 145, 247, 0.22);

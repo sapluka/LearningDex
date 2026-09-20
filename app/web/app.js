@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const chatLog = $("chatLog");
 const termLayer = $("termLayer");
+const hlLayer = $("hlLayer");
 let docTerms = [];
 window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
@@ -34,6 +35,7 @@ function getMarkdown() {
 
 window._setMarkdown = setMarkdown;
 window._getMarkdown = getMarkdown;
+window._renderHighlights = renderHighlights;
 window.__err = "";
 window.addEventListener("error", (e) => { window.__err = "ERR:" + (e.message || e.error); });
 window.addEventListener("unhandledrejection", (e) => { window.__err = "REJ:" + (e.reason && String(e.reason)); });
@@ -91,6 +93,9 @@ async function init() {
   $("editor").addEventListener("mouseup", onDocMouseUp);
   $("editor").addEventListener("dblclick", onDocDblClick);
   $("editor").addEventListener("scroll", hideTermBoxes);
+  $("editor").addEventListener("scroll", scheduleHighlights);
+  $("editor").addEventListener("input", scheduleHighlights);
+  window.addEventListener("resize", scheduleHighlights);
   document.addEventListener("keydown", (e) => { if (e.key === "Control") showTermBoxes(); });
   document.addEventListener("keyup", (e) => { if (e.key === "Control") hideTermBoxes(); });
   document.addEventListener("mousedown", closePops);
@@ -125,6 +130,7 @@ async function startParse() {
     setMarkdown(r.doc);
     docTerms = r.terms || [];
     hideTermBoxes();
+    scheduleHighlights();
     stateEl.textContent = "完成，可编辑文档";
     stateEl.style.color = "green";
     showChatHint();
@@ -172,6 +178,55 @@ function docChatPush(kind, text) {
 
 function hideTermBoxes() {
   termLayer.innerHTML = "";
+}
+
+let hlScheduled = false;
+function scheduleHighlights() {
+  if (hlScheduled) return;
+  hlScheduled = true;
+  requestAnimationFrame(() => { hlScheduled = false; renderHighlights(); });
+}
+
+function drawRect(node, from, to, base, cls) {
+  const r = document.createRange();
+  try {
+    r.setStart(node, from);
+    r.setEnd(node, to);
+  } catch (e) {
+    return;
+  }
+  for (const rc of r.getClientRects()) {
+    const b = document.createElement("div");
+    b.className = cls;
+    b.style.left = (rc.left - base.left) + "px";
+    b.style.top = (rc.top - base.top) + "px";
+    b.style.width = rc.width + "px";
+    b.style.height = rc.height + "px";
+    hlLayer.appendChild(b);
+  }
+}
+
+function renderHighlights() {
+  hlLayer.innerHTML = "";
+  const editorEl = $("editor");
+  if (!editorEl || editorEl.closest("[hidden]")) return;
+  const base = document.querySelector(".center").getBoundingClientRect();
+  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  const re = /==([^=]+)==/g;
+  for (const node of nodes) {
+    const data = node.data || "";
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(data)) !== null) {
+      const s = m.index;
+      const inner = m[1].length;
+      drawRect(node, s, s + 2, base, "hl-mask");
+      drawRect(node, s + 2, s + 2 + inner, base, "hl-box");
+      drawRect(node, s + 2 + inner, s + 4 + inner, base, "hl-mask");
+    }
+  }
 }
 
 function showTermBoxes() {
