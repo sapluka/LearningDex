@@ -68,6 +68,12 @@ class Api:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "reply": reply}
 
+    def explain(self, term):
+        try:
+            return {"ok": True, "answer": agents.explain_term(self.cfg, term)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def lookup_term(self, term):
         res = search.search_term(term)
         if res:
@@ -138,7 +144,12 @@ class Api:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
         saved = _save_output(url, info, doc)
         self.current_doc = doc
-        return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved}
+        self._emit("正在抽取名词")
+        try:
+            terms = agents.extract_terms(self.cfg, doc)
+        except Exception:
+            terms = []
+        return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved, "terms": terms}
 
 
 def main():

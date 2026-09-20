@@ -85,3 +85,27 @@ def explain_term(cfg, term):
         {"role": "user", "content": term},
     ]
     return llm.text(cfg, msgs)
+
+
+TERMS_SYSTEM = (
+    "你是术语抽取器。请从下列学习文档中抽取专有名词/专业术语（排除常见词）。"
+    "每行一个术语，直接输出术语本身，不要编号、不要解释、不要多余内容。"
+)
+
+
+def _parse_terms(text):
+    out = []
+    for line in (text or "").splitlines():
+        s = line.strip().lstrip("-*•").strip()
+        s = s.lstrip("0123456789.、) ").strip()
+        if s and len(s) <= 40 and s not in out:
+            out.append(s)
+    return out
+
+
+def extract_terms(cfg, doc):
+    txt = llm.text(cfg, [
+        {"role": "system", "content": TERMS_SYSTEM},
+        {"role": "user", "content": doc},
+    ])
+    return _parse_terms(txt)

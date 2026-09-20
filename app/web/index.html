@@ -82,6 +82,7 @@
       <!-- 右上角弹层：查词 / 选区操作 -->
       <div id="selectPop" class="select-pop" hidden></div>
       <div id="termPop" class="term-pop" hidden></div>
+      <div id="termLayer" class="term-layer"></div>
     </main>
 
     <!-- 右栏：对话区 -->
@@ -89,6 +90,10 @@
       <div class="chat-head">
         <button class="chat-ico" id="historyBtn" title="历史对话">🕘</button>
         <span class="chat-title">对话</span>
+      </div>
+      <div id="pending" class="pending" hidden>
+        <div class="pending-title">待查名词</div>
+        <div id="pendingList" class="pending-list"></div>
       </div>
       <div id="chatLog" class="chat-log" style="display:flex;align-items:center;justify-content:center;">
         <span class="chat-empty">今天想要学些什么</span>

@@ -9,6 +9,8 @@ let currentUrl = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const chatLog = $("chatLog");
+const termLayer = $("termLayer");
+let docTerms = [];
 window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
@@ -88,6 +90,9 @@ async function init() {
   $("testBtn").onclick = testConnection;
   $("editor").addEventListener("mouseup", onDocMouseUp);
   $("editor").addEventListener("dblclick", onDocDblClick);
+  $("editor").addEventListener("scroll", hideTermBoxes);
+  document.addEventListener("keydown", (e) => { if (e.key === "Control") showTermBoxes(); });
+  document.addEventListener("keyup", (e) => { if (e.key === "Control") hideTermBoxes(); });
   document.addEventListener("mousedown", closePops);
 }
 
@@ -118,6 +123,8 @@ async function startParse() {
       `${info.uploader || ""} ${info.duration ? Math.round(info.duration / 60) + "分钟" : ""}` +
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     setMarkdown(r.doc);
+    docTerms = r.terms || [];
+    hideTermBoxes();
     stateEl.textContent = "完成，可编辑文档";
     stateEl.style.color = "green";
     showChatHint();
@@ -148,15 +155,72 @@ async function sendChat() {
   }
 }
 
-function docChatPush(kind, text) {
-  if (chatLog.style.display !== "flex" || chatLog.querySelector(".chat-empty") || chatLog.innerHTML === "") {
+function ensureChatLog() {
+  if (chatLog.querySelector(".chat-empty") || chatLog.innerHTML === "") {
     chatLog.style.display = "flex";
     chatLog.innerHTML = "";
   }
+}
+
+function docChatPush(kind, text) {
+  ensureChatLog();
   const b = el("div", "bub " + (kind === "user" ? "user" : "ai"));
   b.textContent = text;
   chatLog.appendChild(b);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function hideTermBoxes() {
+  termLayer.innerHTML = "";
+}
+
+function showTermBoxes() {
+  hideTermBoxes();
+  if (!docTerms.length) return;
+  const editorEl = $("editor");
+  const base = document.querySelector(".center").getBoundingClientRect();
+  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const term of docTerms) {
+    for (const node of nodes) {
+      const data = node.data || "";
+      let idx = 0;
+      while ((idx = data.indexOf(term, idx)) !== -1) {
+        const r = document.createRange();
+        r.setStart(node, idx);
+        r.setEnd(node, idx + term.length);
+        for (const rc of r.getClientRects()) {
+          const box = document.createElement("div");
+          box.className = "term-box";
+          box.style.left = (rc.left - base.left) + "px";
+          box.style.top = (rc.top - base.top) + "px";
+          box.style.width = rc.width + "px";
+          box.style.height = rc.height + "px";
+          box.onclick = (ev) => { ev.stopPropagation(); addTerm(term); hideTermBoxes(); };
+          termLayer.appendChild(box);
+        }
+        idx += term.length;
+      }
+    }
+  }
+}
+
+function addTerm(term) {
+  const pending = $("pending");
+  pending.hidden = false;
+  const list = $("pendingList");
+  if ([...list.children].some((c) => c.dataset.term === term)) return;
+  const chip = document.createElement("div");
+  chip.className = "chip";
+  chip.textContent = term;
+  chip.dataset.term = term;
+  chip.onclick = async () => {
+    chip.classList.add("done");
+    const r = await api.explain(term);
+    docChatPush("ai", "【" + term + "】" + (r.ok ? r.answer : "错误：" + r.error));
+  };
+  list.appendChild(chip);
 }
 
 function el(tag, cls) {

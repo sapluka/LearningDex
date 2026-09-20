@@ -471,3 +471,60 @@ body {
   align-self: flex-start;
   background: #f1f1f4;
 }
+
+/* 名词上浮层 */
+.term-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.term-box {
+  position: absolute;
+  background: rgba(79, 145, 247, 0.22);
+  border: 1px solid rgba(79, 145, 247, 0.55);
+  border-radius: 4px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.term-box:hover {
+  background: rgba(79, 145, 247, 0.4);
+}
+
+/* 待查区 */
+.pending {
+  border-bottom: 1px solid #ececf0;
+  padding: 10px 16px;
+}
+
+.pending-title {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  background: #eef1ff;
+  color: #3550c8;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: #dde4ff;
+}
+
+.chip.done {
+  background: #eaf6ec;
+  color: #2e7d32;
+}
