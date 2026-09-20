@@ -9,6 +9,7 @@ let currentUrl = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const chatLog = $("chatLog");
+window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
   editor.action((ctx) => {

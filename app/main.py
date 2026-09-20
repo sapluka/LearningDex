@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -43,6 +44,13 @@ class Api:
             return {"ok": True, "reply": llm.test_connection(c)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def _emit(self, text):
+        try:
+            webview.windows[0].evaluate_js(
+                "window.__setStatus && window.__setStatus(%s)" % json.dumps(text, ensure_ascii=False))
+        except Exception:
+            pass
 
     def chat(self, message):
         try:
@@ -100,11 +108,13 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     def generate_doc(self, url):
+        self._emit("正在提取视频字幕")
         info = subtitle.extract(url, self.cfg)
         note = ""
         if not info["subtitle"]:
             if not self.cfg.get("auto_transcribe", True):
                 return {"ok": False, "error": f"未获取到字幕：{info.get('error') or '无字幕'}", "info": info}
+            self._emit("正在转写语音（本地模型，较慢请稍候）")
             try:
                 tr = transcribe.transcribe_video(
                     url, self.cfg, model_size=self.cfg.get("whisper_model", "base"))
@@ -113,6 +123,7 @@ class Api:
             info["subtitle"] = tr["subtitle"]
             info["transcribe_note"] = f"本地语音转写[{tr.get('used', '?')}]（下载{tr['download_s']}s+识别{tr['asr_s']}s）"
             if self.cfg.get("proofread", True):
+                self._emit("正在核验字幕")
                 try:
                     info["subtitle"] = agents.proofread(self.cfg, info["subtitle"])
                     info["transcribe_note"] += "+字幕核验"
@@ -120,6 +131,7 @@ class Api:
                     info["transcribe_note"] += f"（核验失败跳过：{e}）"
         if not info["subtitle"]:
             return {"ok": False, "error": f"未获取到字幕：{info.get('error') or '无字幕'}", "info": info}
+        self._emit("正在生成笔记")
         try:
             doc = agents.summarize(self.cfg, info)
         except Exception as e:
