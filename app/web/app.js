@@ -74,6 +74,7 @@ function readSettings() {
     model: $("model").value,
     bili_sessdata: $("sessdata").value,
     cookies_file: $("cookiesFile").value,
+    output_dir: $("outputDir").value,
     ...readQuick(),
   };
 }
@@ -85,6 +86,7 @@ function fillSettings(cfg) {
   $("model").value = cfg.model || "";
   $("sessdata").value = cfg.bili_sessdata || "";
   $("cookiesFile").value = cfg.cookies_file || "";
+  $("outputDir").value = cfg.output_dir || "";
   $("whisperModel").value = cfg.whisper_model || "base";
   $("proofread").checked = cfg.proofread !== false;
 }

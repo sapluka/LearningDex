@@ -7,16 +7,21 @@ import webview
 from . import agents, config, llm, search, subtitle, transcribe
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
-STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+
+
+def _state_dir(cfg):
+    d = (cfg or {}).get("output_dir") or ""
+    return d if d else DEFAULT_STATE_DIR
 
 
 def _normalize_md(md):
     return (md or "").replace("\\==", "==")
 
 
-def _save_output(url, info, doc):
+def _save_output(url, info, doc, cfg=None):
     m = re.search(r"BV[0-9A-Za-z]+", url)
-    folder = os.path.join(STATE_DIR, m.group(0) if m else "video")
+    folder = os.path.join(_state_dir(cfg), m.group(0) if m else "video")
     os.makedirs(folder, exist_ok=True)
     sub_path = os.path.join(folder, "subtitle.txt")
     doc_path = os.path.join(folder, "doc.md")
@@ -104,7 +109,7 @@ class Api:
 
     def end_study(self, url, final_md):
         m = re.search(r"BV[0-9A-Za-z]+", url)
-        folder = os.path.join(STATE_DIR, m.group(0) if m else "video")
+        folder = os.path.join(_state_dir(self.cfg), m.group(0) if m else "video")
         os.makedirs(folder, exist_ok=True)
         p = os.path.join(folder, "final.md")
         with open(p, "w", encoding="utf-8") as f:
@@ -146,7 +151,7 @@ class Api:
             doc = agents.summarize(self.cfg, info)
         except Exception as e:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
-        saved = _save_output(url, info, doc)
+        saved = _save_output(url, info, doc, self.cfg)
         self.current_doc = doc
         self._emit("正在抽取名词")
         try:

@@ -13,6 +13,7 @@ DEFAULT = {
     "model": "",
     "whisper_model": "base",
     "proofread": True,
+    "output_dir": "",
     "bili_sessdata": "",
     "cookies_file": "",
     "cookies_text": "",
