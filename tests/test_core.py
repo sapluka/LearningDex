@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -53,8 +54,13 @@ class TestAgents(unittest.TestCase):
     def test_load_skill_missing(self):
         self.assertIsNone(agents.load_skill("不存在"))
 
+    def test_lecture_uses_skill_when_present(self):
+        with mock.patch.object(agents, "_get_skill", return_value="SKILLX"):
+            self.assertEqual(agents.lecture_system(), "SKILLX")
+
     def test_lecture_fallback_default(self):
-        self.assertIn("视频学习助手", agents.lecture_system())
+        with mock.patch.object(agents, "_get_skill", return_value=None):
+            self.assertIn("视频学习助手", agents.lecture_system())
 
 
 class TestConfig(unittest.TestCase):

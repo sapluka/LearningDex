@@ -30,10 +30,39 @@ def _prompt(info):
     )
 
 
-def summarize(cfg, info):
+SHOT_INSTRUCTION = (
+    "在讲解过程中，凡是“配一张视频画面截图能显著帮助理解”的地方，插入一个截图占位符，"
+    "格式严格为：![一句话描述](SHOT:分:秒)。时间是该内容在原视频中出现的时间点，"
+    "取自下方带时间戳的字幕（用其时间戳）。只在确实需要看图处插入，不要滥用。"
+)
+
+
+def _ts_transcript(segments):
+    lines = []
+    for s in segments:
+        fr = s.get("from")
+        if fr is None:
+            continue
+        lines.append(f"[{int(fr) // 60:02d}:{int(fr) % 60:02d}] {s.get('text', '')}")
+    return "\n".join(lines)
+
+
+def _body(info, screenshots=False):
+    head = (f"视频标题：《{info.get('title')}》\n"
+            f"UP主：{info.get('uploader')}\n"
+            f"时长：{info.get('duration')} 秒\n\n")
+    if screenshots and info.get("segments"):
+        return head + "==== 带时间戳字幕 ====\n" + _ts_transcript(info["segments"])
+    return head + "==== 字幕 ====\n" + (info.get("subtitle") or "")
+
+
+def summarize(cfg, info, screenshots=False):
+    sysmsg = lecture_system()
+    if screenshots and info.get("segments"):
+        sysmsg += "\n\n" + SHOT_INSTRUCTION
     msgs = [
-        {"role": "system", "content": lecture_system()},
-        {"role": "user", "content": _prompt(info)},
+        {"role": "system", "content": sysmsg},
+        {"role": "user", "content": _body(info, screenshots)},
     ]
     return llm.text(cfg, msgs)
 
@@ -103,3 +132,19 @@ def extract_terms(cfg, doc):
         {"role": "user", "content": doc},
     ])
     return _parse_terms(txt)
+
+
+def validate_frame(cfg, image_path, caption=""):
+    """把截图交给多模态模型判断是否有效；不支持视觉则默认通过。"""
+    try:
+        import base64
+        with open(image_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        msgs = [{"role": "user", "content": [
+            {"type": "text", "text": f"这是视频的一帧截图（意图：{caption}）。它是否清晰、与意图相关、能用于说明该知识点？只回答“是”或“否”。"},
+            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64}},
+        ]}]
+        r = llm.text(cfg, msgs, max_tokens=5)
+        return "否" not in (r or "")
+    except Exception:
+        return True

@@ -5,7 +5,7 @@ import threading
 
 import webview
 
-from . import agents, config, llm, search, skills, subtitle, transcribe
+from . import agents, config, llm, search, shoot, skills, subtitle, transcribe
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -282,16 +282,25 @@ class Api:
         if not info["subtitle"]:
             return {"ok": False, "error": f"未获取到字幕：{info.get('error') or '无字幕'}", "info": info}
         self._emit("正在生成笔记")
+        screenshots = self.cfg.get("screenshots", True)
         try:
-            doc = agents.summarize(self.cfg, info)
+            doc = agents.summarize(self.cfg, info, screenshots=screenshots)
         except Exception as e:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
+        m = re.search(r"BV[0-9A-Za-z]+", url)
+        bvid = m.group(0) if m else "video"
+        if screenshots and info.get("segments"):
+            self._emit("正在截取视频截图")
+            try:
+                doc = shoot.capture(doc, url, os.path.join(_state_dir(self.cfg), bvid),
+                                    self.cfg, validate=self.cfg.get("shot_validate", True))
+            except Exception:
+                pass
         saved = _save_output(url, info, doc, self.cfg)
         self.current_doc = doc
         self.history = []
-        m = re.search(r"BV[0-9A-Za-z]+", url)
         if m:
-            self._save_history(m.group(0))
+            self._save_history(bvid)
         self._emit("正在抽取名词")
         try:
             terms = agents.extract_terms(self.cfg, doc)
