@@ -162,3 +162,7 @@ def main():
         height=750,
     )
     webview.start()
+
+
+if __name__ == "__main__":
+    main()
