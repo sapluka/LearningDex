@@ -136,6 +136,8 @@ async function init() {
   $("favBtn").onclick = openFavorites;
   $("favsClose").onclick = () => ($("favsModal").hidden = true);
   $("favDocBtn").onclick = toggleCurrentFav;
+  $("historyBtn").onclick = openHistory;
+  $("histClose").onclick = () => ($("histModal").hidden = true);
   document.querySelectorAll(".toolbar .tb").forEach((b) => {
     b.onclick = () => wrapSelection(b.dataset.wrap);
   });
@@ -559,6 +561,50 @@ async function toggleCurrentFav() {
   if (!id) return;
   const r = await api.toggle_favorite(id, $("docTitle").textContent);
   if (r.ok) $("favDocBtn").textContent = r.favorited ? "★" : "☆";
+}
+
+async function openHistory() {
+  const r = await api.list_histories();
+  const list = $("histList");
+  list.innerHTML = "";
+  const items = r.histories || [];
+  if (!items.length) list.innerHTML = '<div class="msg">暂无历史对话</div>';
+  for (const h of items) {
+    const d = el("div", "task-item");
+    const id = el("div", "t-id"); id.textContent = h.id;
+    const sub = el("div", "t-sub");
+    sub.textContent = (h.count || 0) + " 条 · " + new Date(h.mtime * 1000).toLocaleString();
+    d.appendChild(id); d.appendChild(sub);
+    d.onclick = () => loadHistory(h.id);
+    list.appendChild(d);
+  }
+  $("histModal").hidden = false;
+}
+
+async function loadHistory(tid) {
+  const r = await api.load_history(tid);
+  if (!r.ok) return;
+  currentUrl = "https://www.bilibili.com/video/" + tid;
+  if (r.doc) {
+    $("welcome").hidden = true;
+    $("workspace").hidden = false;
+    $("docTitle").textContent = tid;
+    $("meta").textContent = "已载入历史任务";
+    setMarkdown(r.doc);
+    scheduleHighlights();
+  }
+  const hist = r.history || [];
+  chatLog.style.display = "flex";
+  chatLog.innerHTML = "";
+  if (hist.length) {
+    ensureChatLog();
+    for (const m of hist) docChatPush(m.role === "user" ? "user" : "ai", m.content);
+  } else {
+    chatLog.style.alignItems = "center";
+    chatLog.style.justifyContent = "center";
+    chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
+  }
+  $("histModal").hidden = true;
 }
 
 async function saveSettings() {

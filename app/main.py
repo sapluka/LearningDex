@@ -86,6 +86,9 @@ class Api:
                           % json.dumps("\n[错误] " + str(e), ensure_ascii=False))
         self.history.append({"role": "user", "content": message})
         self.history.append({"role": "assistant", "content": "".join(buf)})
+        m = re.search(r"BV[0-9A-Za-z]+", self.current_url or "")
+        if m:
+            self._save_history(m.group(0))
         self._emit_js("window.__chatDone && window.__chatDone()")
 
     def ask_selection(self, selection, question):
@@ -122,6 +125,53 @@ class Api:
         with open(self._fav_path(), "w", encoding="utf-8") as f:
             json.dump(favs, f, ensure_ascii=False, indent=2)
         return {"ok": True, "favorited": not was, "favorites": favs}
+
+    def _chat_path(self, tid):
+        return os.path.join(_state_dir(self.cfg), tid, "chat.json")
+
+    def _save_history(self, tid):
+        if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
+            return
+        folder = os.path.join(_state_dir(self.cfg), tid)
+        os.makedirs(folder, exist_ok=True)
+        with open(self._chat_path(tid), "w", encoding="utf-8") as f:
+            json.dump(self.history, f, ensure_ascii=False, indent=2)
+
+    def _load_history(self, tid):
+        try:
+            with open(self._chat_path(tid), encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except (OSError, json.JSONDecodeError):
+            return []
+
+    def list_histories(self):
+        d = _state_dir(self.cfg)
+        out = []
+        if os.path.isdir(d):
+            for name in os.listdir(d):
+                p = os.path.join(d, name, "chat.json")
+                if os.path.exists(p):
+                    try:
+                        out.append({"id": name, "count": len(self._load_history(name)),
+                                    "mtime": os.path.getmtime(p)})
+                    except OSError:
+                        pass
+        out.sort(key=lambda x: x["mtime"], reverse=True)
+        return {"ok": True, "histories": out}
+
+    def load_history(self, tid):
+        if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
+            return {"ok": False, "error": "非法任务标识"}
+        self.history = self._load_history(tid)
+        self.current_url = "https://www.bilibili.com/video/" + tid
+        doc = ""
+        dp = os.path.join(_state_dir(self.cfg), tid, "doc.md")
+        if os.path.exists(dp):
+            with open(dp, encoding="utf-8") as f:
+                doc = f.read()
+            self.current_doc = doc
+        return {"ok": True, "id": tid, "history": self.history, "doc": doc}
 
     def list_tasks(self):
         d = _state_dir(self.cfg)
@@ -206,6 +256,7 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     def generate_doc(self, url):
+        self.current_url = url
         self._emit("正在提取视频字幕")
         info = subtitle.extract(url, self.cfg)
         note = ""
@@ -236,6 +287,10 @@ class Api:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
         saved = _save_output(url, info, doc, self.cfg)
         self.current_doc = doc
+        self.history = []
+        m = re.search(r"BV[0-9A-Za-z]+", url)
+        if m:
+            self._save_history(m.group(0))
         self._emit("正在抽取名词")
         try:
             terms = agents.extract_terms(self.cfg, doc)
