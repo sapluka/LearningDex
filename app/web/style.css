@@ -648,3 +648,16 @@ body {
 .note-del:hover {
   color: #e33;
 }
+
+/* 打印（生成PDF：仅打印文档区） */
+@media print {
+  body { height: auto; overflow: visible; background: #fff; }
+  .app { display: block; height: auto; }
+  .sidebar, .chat, .toolbar, .state, .meta, .end-bar, .notes,
+  .term-layer, .hl-layer, .select-pop, .term-pop { display: none !important; }
+  .center { padding: 0; overflow: visible; }
+  .workspace { display: block; }
+  .welcome { display: none !important; }
+  .doc-head { border: none; }
+  .editor { border: none; overflow: visible; padding: 0; }
+}

@@ -1,5 +1,6 @@
 import { Editor, rootCtx, editorViewCtx, parserCtx, serializerCtx } from "https://esm.sh/@milkdown/core@7.22.1";
 import { commonmark } from "https://esm.sh/@milkdown/preset-commonmark@7.22.1";
+import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
 import { math } from "https://esm.sh/@milkdown/plugin-math@7";
@@ -101,6 +102,7 @@ async function init() {
     .config((ctx) => ctx.set(rootCtx, $("editor")))
     .use(nord)
     .use(commonmark)
+    .use(gfm)
     .use(history)
     .use(math)
     .create();
@@ -117,7 +119,7 @@ async function init() {
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
-  $("endStudyBtn").onclick = endStudy;
+  $("pdfBtn").onclick = () => window.print();
   $("githubBtn").onclick = () => openLink("https://github.com");
   $("settingsBtn").onclick = () => ($("settings").hidden = false);
   $("closeSettings").onclick = () => ($("settings").hidden = true);
@@ -137,6 +139,7 @@ async function init() {
   $("favBtn").onclick = openFavorites;
   $("favsClose").onclick = () => ($("favsModal").hidden = true);
   $("favDocBtn").onclick = toggleCurrentFav;
+  $("newParseBtn").onclick = newParse;
   $("historyBtn").onclick = openHistory;
   $("histClose").onclick = () => ($("histModal").hidden = true);
   document.querySelectorAll(".toolbar .tb").forEach((b) => {
@@ -154,6 +157,27 @@ async function init() {
 }
 
 function bind() {}
+
+function newParse() {
+  currentUrl = "";
+  imgDir = "";
+  docTerms = [];
+  annotations = [];
+  renderNotes();
+  $("workspace").hidden = true;
+  $("welcome").hidden = false;
+  $("url").value = "";
+  chatLog.style.display = "flex";
+  chatLog.style.alignItems = "center";
+  chatLog.style.justifyContent = "center";
+  chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
+  $("pending").hidden = true;
+  $("pendingList").innerHTML = "";
+  hideTermBoxes();
+  hlLayer.innerHTML = "";
+  setMarkdown("");
+  $("favDocBtn").textContent = "☆";
+}
 
 function openLink(url) {
   if (window.open) window.open(url, "_blank");
@@ -187,6 +211,7 @@ async function startParse() {
     hideTermBoxes();
     scheduleHighlights();
     setTimeout(fixImages, 400);
+    refreshStar();
     stateEl.textContent = "完成，可编辑文档";
     stateEl.style.color = "green";
     showChatHint();
@@ -591,6 +616,7 @@ async function loadTask(id) {
   hideTermBoxes();
   scheduleHighlights();
   setTimeout(fixImages, 400);
+  refreshStar();
   $("tasksModal").hidden = true;
 }
 
@@ -614,6 +640,16 @@ async function openFavorites() {
     list.appendChild(d);
   }
   $("favsModal").hidden = false;
+}
+
+async function refreshStar() {
+  const id = bvidOf(currentUrl);
+  if (!id) { $("favDocBtn").textContent = "☆"; return; }
+  try {
+    const r = await api.list_favorites();
+    const fav = (r.favorites || []).some((f) => f.id === id);
+    $("favDocBtn").textContent = fav ? "★" : "☆";
+  } catch (e) { /* ignore */ }
 }
 
 async function toggleCurrentFav() {
@@ -654,6 +690,7 @@ async function loadHistory(tid) {
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
     setTimeout(fixImages, 400);
+    refreshStar();
   }
   const hist = r.history || [];
   chatLog.style.display = "flex";
@@ -682,11 +719,7 @@ async function testConnection() {
 
 async function endStudy() {
   const md = buildExportMd();
-  const r = await api.end_study(currentUrl, md);
-  const btn = $("endStudyBtn");
-  btn.textContent = "已保存：" + (r.ok ? "final.md" : r.error);
-  btn.disabled = true;
-  setTimeout(() => { btn.textContent = "结束学习"; btn.disabled = false; }, 2500);
+  await api.end_study(currentUrl, md);
 }
 
 window.addEventListener("pywebviewready", init);
