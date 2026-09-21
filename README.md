@@ -24,6 +24,3 @@ tests/          单元测试
 skills/         可插拔 skill
 ```
 
-## 个人信息
-
-API Key、B站 SESSDATA、cookies 等**不入库**，通过 `personal.py`（个人信息文档）或环境变量注入。模板见 `personal.example.py`。
