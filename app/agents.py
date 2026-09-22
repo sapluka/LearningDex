@@ -36,6 +36,11 @@ SHOT_INSTRUCTION = (
     "取自下方带时间戳的字幕（用其时间戳）。只在确实需要看图处插入，不要滥用。"
 )
 
+DIAGRAM_INSTRUCTION = (
+    "遇到适合用图的场景（推导过程、流程、判定分支、知识结构关系等），"
+    "请用 Mermaid 流程图（```mermaid 代码块）表达，帮助理解；图形简洁、节点用中文标注。"
+)
+
 
 def _ts_transcript(segments):
     lines = []
@@ -57,7 +62,7 @@ def _body(info, screenshots=False):
 
 
 def summarize(cfg, info, screenshots=False):
-    sysmsg = lecture_system()
+    sysmsg = lecture_system() + "\n\n" + DIAGRAM_INSTRUCTION
     if screenshots and info.get("segments"):
         sysmsg += "\n\n" + SHOT_INSTRUCTION
     msgs = [

@@ -550,6 +550,24 @@ body {
   z-index: 30;
 }
 
+/* Mermaid 图覆盖层（绘制在代码块之上） */
+.mmd-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 33;
+}
+
+.mmd-item {
+  position: absolute;
+  background: #fff;
+  overflow: auto;
+}
+
+.mmd-item svg {
+  max-width: 100%;
+}
+
 .hl-box {
   position: absolute;
   background: rgba(255, 214, 0, 0.35);
@@ -649,12 +667,57 @@ body {
   color: #e33;
 }
 
+/* 任务清单复选框（Milkdown GFM task item） */
+.editor li[data-item-type="task"] {
+  list-style: none;
+  position: relative;
+  padding-left: 24px;
+}
+
+.editor li[data-item-type="task"]::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #9aa0a6;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.editor li[data-item-type="task"][data-checked="true"]::before {
+  background: #4f6ef7;
+  border-color: #4f6ef7;
+}
+
+.editor li[data-item-type="task"][data-checked="true"]::after {
+  content: "✓";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.editor li[data-item-type="task"][data-checked="true"] > p {
+  color: #999;
+  text-decoration: line-through;
+}
+
+/* Mermaid 图 */
+.editor .milkdown-diagram,
+.editor svg[id^="mermaid"] {
+  max-width: 100%;
+}
+
 /* 打印（生成PDF：仅打印文档区） */
 @media print {
   body { height: auto; overflow: visible; background: #fff; }
   .app { display: block; height: auto; }
   .sidebar, .chat, .toolbar, .state, .meta, .end-bar, .notes,
-  .term-layer, .hl-layer, .select-pop, .term-pop { display: none !important; }
+  .term-layer, .hl-layer, .mmd-layer, .select-pop, .term-pop { display: none !important; }
   .center { padding: 0; overflow: visible; }
   .workspace { display: block; }
   .welcome { display: none !important; }

@@ -62,6 +62,7 @@ window._selectAll = () => {
 window._setMarkdown = setMarkdown;
 window._getMarkdown = getMarkdown;
 window._renderHighlights = renderHighlights;
+window._renderMermaids = renderMermaids;
 window.__err = "";
 window.addEventListener("error", (e) => { window.__err = "ERR:" + (e.message || e.error); });
 window.addEventListener("unhandledrejection", (e) => { window.__err = "REJ:" + (e.reason && String(e.reason)); });
@@ -149,6 +150,7 @@ async function init() {
   $("editor").addEventListener("dblclick", onDocDblClick);
   $("editor").addEventListener("scroll", hideTermBoxes);
   $("editor").addEventListener("scroll", scheduleHighlights);
+  $("editor").addEventListener("scroll", scheduleMermaid);
   $("editor").addEventListener("input", scheduleHighlights);
   window.addEventListener("resize", scheduleHighlights);
   document.addEventListener("keydown", (e) => { if (e.key === "Control") showTermBoxes(); });
@@ -212,6 +214,7 @@ async function startParse() {
     scheduleHighlights();
     setTimeout(fixImages, 400);
     refreshStar();
+    setTimeout(renderMermaids, 700);
     stateEl.textContent = "完成，可编辑文档";
     stateEl.style.color = "green";
     showChatHint();
@@ -328,6 +331,56 @@ function mdForExport() {
   const b = absBase();
   if (b) md = md.split(b + "/").join("");
   return md;
+}
+
+let mermaidLib = null;
+const mmdLayer = $("mmdLayer");
+const mmdCache = {};
+async function ensureMermaid() {
+  if (!mermaidLib) {
+    const m = await import("https://esm.sh/mermaid@10");
+    mermaidLib = m.default || m;
+    mermaidLib.initialize({ startOnLoad: false, securityLevel: "loose" });
+  }
+  return mermaidLib;
+}
+
+async function renderMermaids() {
+  mmdLayer.innerHTML = "";
+  const editorEl = $("editor");
+  if (!editorEl || editorEl.closest("[hidden]")) return;
+  const pres = [];
+  editorEl.querySelectorAll("pre").forEach((p) => {
+    if (p.getAttribute("data-language") === "mermaid") pres.push(p);
+  });
+  if (!pres.length) return;
+  let lib;
+  try { lib = await ensureMermaid(); } catch (e) { return; }
+  const base = document.querySelector(".center").getBoundingClientRect();
+  for (let i = 0; i < pres.length; i++) {
+    const code = pres[i].querySelector("code").textContent;
+    let svg = mmdCache[code];
+    if (!svg) {
+      try { svg = (await lib.render("mmd_" + Date.now() + "_" + i, code)).svg; mmdCache[code] = svg; }
+      catch (e) { continue; }
+    }
+    const r = pres[i].getBoundingClientRect();
+    const d = document.createElement("div");
+    d.className = "mmd-item";
+    d.style.left = (r.left - base.left) + "px";
+    d.style.top = (r.top - base.top) + "px";
+    d.style.width = r.width + "px";
+    d.style.minHeight = r.height + "px";
+    d.innerHTML = svg;
+    mmdLayer.appendChild(d);
+  }
+}
+
+let mmdScheduled = false;
+function scheduleMermaid() {
+  if (mmdScheduled) return;
+  mmdScheduled = true;
+  requestAnimationFrame(() => { mmdScheduled = false; renderMermaids(); });
 }
 
 function drawRect(node, from, to, base, cls) {
@@ -617,6 +670,7 @@ async function loadTask(id) {
   scheduleHighlights();
   setTimeout(fixImages, 400);
   refreshStar();
+  setTimeout(renderMermaids, 700);
   $("tasksModal").hidden = true;
 }
 
@@ -691,6 +745,7 @@ async function loadHistory(tid) {
     scheduleHighlights();
     setTimeout(fixImages, 400);
     refreshStar();
+    setTimeout(renderMermaids, 700);
   }
   const hist = r.history || [];
   chatLog.style.display = "flex";
