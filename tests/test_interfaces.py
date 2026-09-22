@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import unittest
 from unittest import mock
 
@@ -24,12 +25,6 @@ class TestAgentsInterfaces(unittest.TestCase):
         msgs = t.call_args[0][1]
         self.assertIn("选中的话", msgs[-1]["content"])
         self.assertIn("选中的话", msgs[-1]["content"])
-
-    def test_explain_term(self):
-        with mock.patch.object(agents.llm, "text", return_value="解释") as t:
-            agents.explain_term({}, "Mipmap")
-        self.assertEqual(t.call_args[0][1][-1]["content"], "Mipmap")
-
 
 class TestSearch(unittest.TestCase):
     def test_wiki_summary_ok(self):

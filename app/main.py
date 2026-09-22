@@ -219,21 +219,11 @@ class Api:
     def delete_skill(self, name):
         return {"ok": skills.delete(name)}
 
-    def explain(self, term):
-        try:
-            return {"ok": True, "answer": agents.explain_term(self.cfg, term)}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
     def lookup_term(self, term):
         res = search.search_term(term)
         if res:
             return {"ok": True, **res}
-        try:
-            exp = agents.explain_term(self.cfg, term)
-            return {"ok": True, "summary": exp, "source": "llm"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "未找到结果"}
 
     def export_md(self, content, default_name="学习笔记.md"):
         try:
@@ -248,15 +238,6 @@ class Api:
         with open(path, "w", encoding="utf-8") as f:
             f.write(_normalize_md(content))
         return {"ok": True, "path": path}
-
-    def end_study(self, url, final_md):
-        m = re.search(r"BV[0-9A-Za-z]+", url)
-        folder = os.path.join(_state_dir(self.cfg), m.group(0) if m else "video")
-        os.makedirs(folder, exist_ok=True)
-        p = os.path.join(folder, "final.md")
-        with open(p, "w", encoding="utf-8") as f:
-            f.write(_normalize_md(final_md))
-        return {"ok": True, "path": p}
 
     def extract(self, url):
         try:
@@ -310,13 +291,8 @@ class Api:
         self.history = []
         if m:
             self._save_history(bvid)
-        self._emit("正在抽取名词")
-        try:
-            terms = agents.extract_terms(self.cfg, doc)
-        except Exception:
-            terms = []
         return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved,
-                "terms": terms, "taskdir": os.path.join(_state_dir(self.cfg), bvid)}
+                "taskdir": os.path.join(_state_dir(self.cfg), bvid)}
 
 
 def main():
