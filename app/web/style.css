@@ -534,14 +534,6 @@ body {
   background: #f1f1f4;
 }
 
-/* 名词上浮层 */
-.term-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 40;
-}
-
 /* ==高亮== 覆盖层 */
 .hl-layer {
   position: absolute;
@@ -577,94 +569,6 @@ body {
 .hl-mask {
   position: absolute;
   background: #ffffff;
-}
-
-.term-box {
-  position: absolute;
-  background: rgba(79, 145, 247, 0.22);
-  border: 1px solid rgba(79, 145, 247, 0.55);
-  border-radius: 4px;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.term-box:hover {
-  background: rgba(79, 145, 247, 0.4);
-}
-
-/* 待查区 */
-.pending {
-  border-bottom: 1px solid #ececf0;
-  padding: 10px 16px;
-}
-
-.pending-title {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.pending-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.chip {
-  background: #eef1ff;
-  color: #3550c8;
-  border-radius: 12px;
-  padding: 3px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.chip:hover {
-  background: #dde4ff;
-}
-
-.chip.done {
-  background: #eaf6ec;
-  color: #2e7d32;
-}
-
-/* 批注面板 */
-.notes {
-  border-top: 1px solid #ececf0;
-  padding: 8px 2px 0;
-  max-height: 140px;
-  overflow: auto;
-}
-
-.notes-title {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.note-item {
-  font-size: 12px;
-  color: #444;
-  padding: 4px 6px;
-  border-left: 3px solid #ffd600;
-  background: #fffbe6;
-  border-radius: 4px;
-  margin-bottom: 6px;
-}
-
-.note-item .q {
-  color: #999;
-}
-
-.note-del {
-  float: right;
-  color: #bbb;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-.note-del:hover {
-  color: #e33;
 }
 
 /* 任务清单复选框（Milkdown GFM task item） */
@@ -712,15 +616,29 @@ body {
   max-width: 100%;
 }
 
-/* 打印（生成PDF：仅打印文档区） */
+/* 打印专用视图（含推导图内联渲染） */
+.print-root {
+  display: none;
+}
+
+/* 打印（生成PDF：仅打印 print-root，含截图与推导图） */
 @media print {
   body { height: auto; overflow: visible; background: #fff; }
-  .app { display: block; height: auto; }
-  .sidebar, .chat, .toolbar, .state, .meta, .end-bar, .notes,
-  .term-layer, .hl-layer, .mmd-layer, .select-pop, .term-pop { display: none !important; }
-  .center { padding: 0; overflow: visible; }
-  .workspace { display: block; }
-  .welcome { display: none !important; }
-  .doc-head { border: none; }
-  .editor { border: none; overflow: visible; padding: 0; }
+  body > *:not(.print-root) { display: none !important; }
+  .print-root {
+    display: block !important;
+    max-width: 820px;
+    margin: 0 auto;
+    color: #000;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .print-root img { max-width: 100%; }
+  .print-root .print-mmd svg { max-width: 100%; height: auto; }
+  .print-root pre { white-space: pre-wrap; word-break: break-word; }
+  .print-root mark { background: #fff3a3; }
+  .print-root h1, .print-root h2, .print-root h3 { page-break-after: avoid; }
+  .print-root img, .print-root .print-mmd { page-break-inside: avoid; }
+  .print-root table { border-collapse: collapse; width: 100%; }
+  .print-root th, .print-root td { border: 1px solid #999; padding: 4px 8px; }
 }

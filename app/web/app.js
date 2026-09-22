@@ -11,15 +11,14 @@ let currentUrl = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const chatLog = $("chatLog");
-const termLayer = $("termLayer");
 const hlLayer = $("hlLayer");
-let docTerms = [];
-let annotations = [];
 let currentSkills = [];
 let imgDir = "";
 window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
+  md = (md || "").replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,
+    (_, alt, src) => '<img src="' + src + '" alt="' + alt + '">');
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const parser = ctx.get(parserCtx);
@@ -120,7 +119,7 @@ async function init() {
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
-  $("pdfBtn").onclick = () => window.print();
+  $("pdfBtn").onclick = async () => { await buildPrintDoc(); window.print(); };
   $("githubBtn").onclick = () => openLink("https://github.com");
   $("settingsBtn").onclick = () => ($("settings").hidden = false);
   $("closeSettings").onclick = () => ($("settings").hidden = true);
@@ -148,13 +147,11 @@ async function init() {
   });
   $("editor").addEventListener("mouseup", onDocMouseUp);
   $("editor").addEventListener("dblclick", onDocDblClick);
-  $("editor").addEventListener("scroll", hideTermBoxes);
   $("editor").addEventListener("scroll", scheduleHighlights);
   $("editor").addEventListener("scroll", scheduleMermaid);
   $("editor").addEventListener("input", scheduleHighlights);
   window.addEventListener("resize", scheduleHighlights);
-  document.addEventListener("keydown", (e) => { if (e.key === "Control") showTermBoxes(); });
-  document.addEventListener("keyup", (e) => { if (e.key === "Control") hideTermBoxes(); });
+  window.addEventListener("resize", scheduleMermaid);
   document.addEventListener("mousedown", closePops);
 }
 
@@ -163,9 +160,6 @@ function bind() {}
 function newParse() {
   currentUrl = "";
   imgDir = "";
-  docTerms = [];
-  annotations = [];
-  renderNotes();
   $("workspace").hidden = true;
   $("welcome").hidden = false;
   $("url").value = "";
@@ -173,9 +167,6 @@ function newParse() {
   chatLog.style.alignItems = "center";
   chatLog.style.justifyContent = "center";
   chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
-  $("pending").hidden = true;
-  $("pendingList").innerHTML = "";
-  hideTermBoxes();
   hlLayer.innerHTML = "";
   setMarkdown("");
   $("favDocBtn").textContent = "☆";
@@ -207,10 +198,6 @@ async function startParse() {
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     imgDir = r.taskdir || "";
     setMarkdown(mdForDisplay(r.doc));
-    docTerms = r.terms || [];
-    annotations = [];
-    renderNotes();
-    hideTermBoxes();
     scheduleHighlights();
     setTimeout(fixImages, 400);
     refreshStar();
@@ -297,10 +284,6 @@ window.__chatDone = () => {
   if (last && last.classList.contains("ai")) renderBubble(last);
 };
 
-function hideTermBoxes() {
-  termLayer.innerHTML = "";
-}
-
 let hlScheduled = false;
 function scheduleHighlights() {
   if (hlScheduled) return;
@@ -324,13 +307,6 @@ function absBase() {
 function mdForDisplay(md) {
   const b = absBase();
   return b ? (md || "").replace(/\]\(images\//g, "](" + b + "/images/") : (md || "");
-}
-
-function mdForExport() {
-  let md = getMarkdown();
-  const b = absBase();
-  if (b) md = md.split(b + "/").join("");
-  return md;
 }
 
 let mermaidLib = null;
@@ -383,6 +359,47 @@ function scheduleMermaid() {
   requestAnimationFrame(() => { mmdScheduled = false; renderMermaids(); });
 }
 
+const MMD_BLOCK_RE = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
+
+function decodeEntities(s) {
+  return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+}
+
+async function buildPrintDoc() {
+  const root = $("printRoot");
+  let md = mdForDisplay(getMarkdown());
+  md = md.replace(/\\==/g, "==");
+  md = md.replace(/==([^=\n]+)==/g, "<mark>$1</mark>");
+  let html = window.marked ? window.marked.parse(md, { breaks: true, gfm: true }) : md;
+  const blocks = [...html.matchAll(MMD_BLOCK_RE)];
+  if (blocks.length) {
+    let lib = null;
+    try { lib = await ensureMermaid(); } catch (e) { lib = null; }
+    for (let i = 0; i < blocks.length; i++) {
+      let svg = "";
+      if (lib) {
+        try { svg = (await lib.render("pmmd_" + Date.now() + "_" + i, decodeEntities(blocks[i][1]))).svg; }
+        catch (e) { svg = ""; }
+      }
+      html = html.replace(blocks[i][0], () => (svg ? '<div class="print-mmd">' + svg + "</div>" : blocks[i][0]));
+    }
+  }
+  root.innerHTML = html;
+  if (window.renderMathInElement) {
+    try {
+      window.renderMathInElement(root, { delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\[", right: "\\]", display: true },
+        { left: "$", right: "$", display: false },
+        { left: "\\(", right: "\\)", display: false },
+      ] });
+    } catch (e) { /* ignore */ }
+  }
+}
+
+window._buildPrintDoc = buildPrintDoc;
+
 function drawRect(node, from, to, base, cls) {
   const r = document.createRange();
   try {
@@ -424,55 +441,6 @@ function renderHighlights() {  hlLayer.innerHTML = "";
   }
 }
 
-function showTermBoxes() {
-  hideTermBoxes();
-  if (!docTerms.length) return;
-  const editorEl = $("editor");
-  const base = document.querySelector(".center").getBoundingClientRect();
-  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  for (const term of docTerms) {
-    for (const node of nodes) {
-      const data = node.data || "";
-      let idx = 0;
-      while ((idx = data.indexOf(term, idx)) !== -1) {
-        const r = document.createRange();
-        r.setStart(node, idx);
-        r.setEnd(node, idx + term.length);
-        for (const rc of r.getClientRects()) {
-          const box = document.createElement("div");
-          box.className = "term-box";
-          box.style.left = (rc.left - base.left) + "px";
-          box.style.top = (rc.top - base.top) + "px";
-          box.style.width = rc.width + "px";
-          box.style.height = rc.height + "px";
-          box.onclick = (ev) => { ev.stopPropagation(); addTerm(term); hideTermBoxes(); };
-          termLayer.appendChild(box);
-        }
-        idx += term.length;
-      }
-    }
-  }
-}
-
-function addTerm(term) {
-  const pending = $("pending");
-  pending.hidden = false;
-  const list = $("pendingList");
-  if ([...list.children].some((c) => c.dataset.term === term)) return;
-  const chip = document.createElement("div");
-  chip.className = "chip";
-  chip.textContent = term;
-  chip.dataset.term = term;
-  chip.onclick = async () => {
-    chip.classList.add("done");
-    const r = await api.explain(term);
-    docChatPush("ai", "【" + term + "】" + (r.ok ? r.answer : "错误：" + r.error));
-  };
-  list.appendChild(chip);
-}
-
 function el(tag, cls) {
   const d = document.createElement(tag);
   d.className = cls;
@@ -496,23 +464,8 @@ function onDocMouseUp(e) {
   b1.onclick = () => { closePop("selectPop"); askSelection(text, ""); };
   const b2 = el("button", ""); b2.textContent = "网页搜索所选内容";
   b2.onclick = () => { closePop("selectPop"); lookupTerm(text); };
-  const b3 = el("button", ""); b3.textContent = "添加批注";
-  b3.onclick = () => {
-    pop.innerHTML = "";
-    const inp = document.createElement("input");
-    inp.placeholder = "输入批注…";
-    inp.style.width = "150px";
-    const ok = el("button", ""); ok.textContent = "保存";
-    ok.onclick = () => {
-      const note = inp.value.trim();
-      if (note) { annotations.push({ quote: text, note }); renderNotes(); }
-      closePop("selectPop");
-    };
-    pop.appendChild(inp); pop.appendChild(ok); inp.focus();
-  };
   pop.appendChild(b1);
   pop.appendChild(b2);
-  pop.appendChild(b3);
   pop.style.left = Math.min(rect.left, innerWidth - 180) + "px";
   pop.style.top = rect.bottom + 8 + "px";
 }
@@ -560,45 +513,6 @@ function closePops() {
 
 function closePop(id) { $(id).hidden = true; }
 
-function renderNotes() {
-  const panel = $("notes");
-  const list = $("notesList");
-  list.innerHTML = "";
-  if (!annotations.length) { panel.hidden = true; return; }
-  panel.hidden = false;
-  annotations.forEach((a, i) => {
-    const d = el("div", "note-item");
-    const q = el("span", "q");
-    q.textContent = "「" + a.quote.slice(0, 20) + (a.quote.length > 20 ? "…" : "") + "」 ";
-    d.appendChild(q);
-    d.appendChild(document.createTextNode(a.note));
-    const del = el("span", "note-del");
-    del.textContent = "×";
-    del.title = "删除批注";
-    del.onclick = () => { annotations.splice(i, 1); renderNotes(); };
-    d.appendChild(del);
-    list.appendChild(d);
-  });
-}
-
-function buildExportMd() {
-  let md = mdForExport();
-  const defs = [];
-  annotations.forEach((a, i) => {
-    const n = i + 1;
-    const idx = md.indexOf(a.quote);
-    if (idx >= 0) {
-      const at = idx + a.quote.length;
-      md = md.slice(0, at) + "[^" + n + "]" + md.slice(at);
-    }
-    defs.push("[^" + n + "]: " + a.note);
-  });
-  if (defs.length) md = md.replace(/\s+$/, "") + "\n\n" + defs.join("\n") + "\n";
-  return md;
-}
-
-window._addNote = (q, n) => { annotations.push({ quote: q, note: n }); renderNotes(); };
-window._exportMd = buildExportMd;
 window._loadTask = loadTask;
 
 async function openSkills() {
@@ -663,10 +577,6 @@ async function loadTask(id) {
   $("meta").textContent = "已载入历史任务";
   imgDir = r.taskdir || "";
   setMarkdown(mdForDisplay(r.doc));
-  docTerms = [];
-  annotations = [];
-  renderNotes();
-  hideTermBoxes();
   scheduleHighlights();
   setTimeout(fixImages, 400);
   refreshStar();
@@ -770,11 +680,6 @@ async function testConnection() {
   $("setMsg").textContent = "检验中…";
   const r = await api.test_connection(readSettings());
   $("setMsg").textContent = r.ok ? "连接成功：" + r.reply : "失败：" + r.error;
-}
-
-async function endStudy() {
-  const md = buildExportMd();
-  await api.end_study(currentUrl, md);
 }
 
 window.addEventListener("pywebviewready", init);

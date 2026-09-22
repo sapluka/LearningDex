@@ -84,10 +84,6 @@
           <button class="tb" data-wrap="~~" title="删除线">S</button>
         </div>
         <div id="editor" class="editor"></div>
-        <div id="notes" class="notes" hidden>
-          <div class="notes-title">批注</div>
-          <div id="notesList" class="notes-list"></div>
-        </div>
         <div class="end-bar">
           <button class="btn primary" id="pdfBtn">生成PDF</button>
         </div>
@@ -98,7 +94,6 @@
       <div id="termPop" class="term-pop" hidden></div>
       <div id="hlLayer" class="hl-layer"></div>
       <div id="mmdLayer" class="mmd-layer"></div>
-      <div id="termLayer" class="term-layer"></div>
     </main>
 
     <!-- 右栏：对话区 -->
@@ -106,10 +101,6 @@
       <div class="chat-head">
         <button class="chat-ico" id="historyBtn" title="历史对话">🕘</button>
         <span class="chat-title">对话</span>
-      </div>
-      <div id="pending" class="pending" hidden>
-        <div class="pending-title">待查名词</div>
-        <div id="pendingList" class="pending-list"></div>
       </div>
       <div id="chatLog" class="chat-log" style="display:flex;align-items:center;justify-content:center;">
         <span class="chat-empty">今天想要学些什么</span>
@@ -210,6 +201,8 @@
       <div class="row right"><button class="btn primary" id="histClose">关闭</button></div>
     </div>
   </div>
+
+  <div id="printRoot" class="print-root"></div>
 
   <script type="module" src="app.js"></script>
 </body>
