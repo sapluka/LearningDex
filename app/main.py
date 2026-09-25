@@ -131,12 +131,13 @@ class Api:
             return saved
         try:
             directory = self.cfg.get("pdf_output_dir") or _state_dir(self.cfg)
+            directory = os.path.abspath(os.path.expanduser(directory))
             os.makedirs(directory, exist_ok=True)
             tid = os.path.basename(self.current_taskdir) if self.current_taskdir else ""
             path = pdf_export.pdf_path(directory, title, tid)
             pdf_export.print_current_page(path, webview.windows[0])
             return {"ok": True, "path": path}
-        except (OSError, RuntimeError, TimeoutError, IndexError) as e:
+        except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def choose_pdf_output_dir(self):

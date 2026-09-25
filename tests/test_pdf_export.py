@@ -31,6 +31,16 @@ class TestPdfExport(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(api.current_taskdir, 'final.md')))
             render.assert_called_once()
 
+    def test_pdf_engine_error_is_reported(self):
+        with tempfile.TemporaryDirectory() as root:
+            api = main.Api()
+            api.cfg = {'output_dir': root}
+            with mock.patch.object(pdf_export, 'print_current_page', side_effect=Exception('渲染失败')), \
+                 mock.patch.object(main.webview, 'windows', [object()]):
+                result = api.generate_pdf('# 内容', '标题')
+            self.assertFalse(result['ok'])
+            self.assertIn('渲染失败', result['error'])
+
 
 if __name__ == '__main__':
     unittest.main()
