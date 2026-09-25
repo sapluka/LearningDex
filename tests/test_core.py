@@ -72,6 +72,12 @@ class TestAgents(unittest.TestCase):
         self.assertIn("SHOT:分:秒", system["content"])
         self.assertIn("[00:12] 对比两种采样效果", user["content"])
 
+    def test_default_lecture_skill_has_precise_positive_examples(self):
+        prompt = agents.lecture_system()
+        self.assertIn("过渡句应说明具体关系、条件或后续位置", prompt)
+        self.assertNotIn("这个东西现在知道它存在就够了", prompt)
+        self.assertNotIn("允许废话", prompt)
+
 
 class TestConfig(unittest.TestCase):
     def test_load_has_defaults(self):
