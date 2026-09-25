@@ -1,8 +1,10 @@
+import hashlib
 import os
 import re
 import site
 import time
 import urllib.request
+import uuid
 
 import yt_dlp
 from faster_whisper import WhisperModel
@@ -88,33 +90,39 @@ def ensure_model(size="base"):
 def download_audio(url, cfg=None):
     os.makedirs(CACHE_DIR, exist_ok=True)
     bvid = _bvid(url)
-    name = (bvid or str(hash(url))[:8]) + ".m4a"
+    name = (bvid or "video_" + hashlib.sha256(url.encode()).hexdigest()[:12]) + ".m4a"
     path = os.path.join(CACHE_DIR, name)
     if os.path.exists(path) and os.path.getsize(path) > 0:
         return path, False
+    temporary = path + "." + uuid.uuid4().hex + ".m4a"
     if cfg is not None:
         subtitle.configure(cfg)
     opts = {
         "format": "bestaudio/best",
-        "outtmpl": path,
+        "outtmpl": temporary,
         "quiet": True,
         "noplaylist": True,
     }
     if "bilibili" in url.lower():
         opts["cookiefile"] = subtitle._cookie_source()
-    start = time.time()
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.download([url])
-    except Exception as e:
-        if "412" in str(e):
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+        except Exception as e:
+            if "412" not in str(e):
+                raise
             subtitle._refresh()
             time.sleep(2)
             opts["cookiefile"] = subtitle._cookie_source()
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([url])
-        else:
-            raise
+        if not os.path.isfile(temporary) or os.path.getsize(temporary) == 0:
+            raise RuntimeError("音频下载未生成有效文件")
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
     return path, True
 
 
