@@ -50,13 +50,23 @@ function getMarkdown() {
   return restoreMath(md);
 }
 
-function wrapSelection(marker) {
+function formatSelection(marker) {
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const { from, to } = view.state.selection;
-    const text = view.state.doc.textBetween(from, to, "");
-    if (!text) return;
-    view.dispatch(view.state.tr.insertText(marker + text + marker, from, to));
+    if (from === to) return;
+    if (marker === "==") {
+      const text = view.state.doc.textBetween(from, to, "");
+      view.dispatch(view.state.tr.insertText("==" + text + "==", from, to));
+      return;
+    }
+    const name = { "**": "strong", "*": "emphasis", "~~": "strike_through" }[marker];
+    const mark = view.state.schema.marks[name];
+    if (!mark) return;
+    const tr = view.state.doc.rangeHasMark(from, to, mark)
+      ? view.state.tr.removeMark(from, to, mark)
+      : view.state.tr.addMark(from, to, mark.create());
+    view.dispatch(tr);
   });
   scheduleHighlights();
 }
@@ -168,7 +178,7 @@ async function init() {
   $("historyBtn").onclick = openHistory;
   $("histClose").onclick = () => ($("histModal").hidden = true);
   document.querySelectorAll(".toolbar .tb").forEach((b) => {
-    b.onclick = () => wrapSelection(b.dataset.wrap);
+    b.onclick = () => formatSelection(b.dataset.wrap);
   });
   $("editor").addEventListener("mouseup", onDocMouseUp);
   $("editor").addEventListener("dblclick", onDocDblClick);
