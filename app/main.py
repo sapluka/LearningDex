@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import threading
 import uuid
 
@@ -27,14 +28,19 @@ def _task_id(url):
     return match.group(0) if match else "video_" + hashlib.sha256((url or "").encode()).hexdigest()[:12]
 
 
-def _source_url(taskdir, tid):
+def _source_info(taskdir):
     try:
         with open(os.path.join(taskdir, "source.json"), encoding="utf-8") as f:
-            url = json.load(f).get("url", "")
-        if isinstance(url, str) and url:
-            return url
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
     except (OSError, ValueError, AttributeError):
-        pass
+        return {}
+
+
+def _source_url(taskdir, tid):
+    url = _source_info(taskdir).get("url", "")
+    if isinstance(url, str) and url:
+        return url
     return "https://www.bilibili.com/video/" + tid if tid.startswith("BV") else ""
 
 
@@ -230,7 +236,8 @@ class Api:
                 p = os.path.join(d, name, "chat.json")
                 if os.path.exists(p):
                     try:
-                        out.append({"id": name, "count": len(self._load_history(name)),
+                        out.append({"id": name, "title": _source_info(os.path.join(d, name)).get("title") or name,
+                                    "count": len(self._load_history(name)),
                                     "mtime": os.path.getmtime(p)})
                     except OSError:
                         pass
@@ -259,7 +266,8 @@ class Api:
             with open(dp, encoding="utf-8") as f:
                 doc = f.read()
             self.current_doc = doc
-        return {"ok": True, "id": tid, "url": self.current_url, "history": self.history, "doc": doc,
+        return {"ok": True, "id": tid, "title": _source_info(self.current_taskdir).get("title") or tid,
+                "url": self.current_url, "history": self.history, "doc": doc,
                 "taskdir": self.current_taskdir}
 
     def list_tasks(self):
@@ -271,6 +279,7 @@ class Api:
                 if os.path.isdir(p) and os.path.exists(os.path.join(p, "doc.md")):
                     out.append({
                         "id": name,
+                        "title": _source_info(p).get("title") or name,
                         "has_doc": os.path.exists(os.path.join(p, "doc.md")),
                         "mtime": os.path.getmtime(p),
                     })
@@ -292,8 +301,30 @@ class Api:
         self.current_doc = doc
         self.current_url = _source_url(self.current_taskdir, tid)
         self.history = self._load_history(tid)
-        return {"ok": True, "doc": doc, "id": tid, "url": self.current_url,
+        return {"ok": True, "doc": doc, "id": tid, "title": _source_info(self.current_taskdir).get("title") or tid,
+                "url": self.current_url,
                 "taskdir": self.current_taskdir, "history": self.history}
+
+    def delete_task(self, tid):
+        if not re.fullmatch(r"[A-Za-z0-9_\-]+", tid or ""):
+            return {"ok": False, "error": "非法任务标识"}
+        base = os.path.realpath(_state_dir(self.cfg))
+        target = os.path.realpath(os.path.join(base, tid))
+        if os.path.commonpath((base, target)) != base or os.path.islink(os.path.join(base, tid)):
+            return {"ok": False, "error": "非法任务路径"}
+        if not os.path.isfile(os.path.join(target, "doc.md")):
+            return {"ok": False, "error": "未找到该任务"}
+        try:
+            shutil.rmtree(target)
+            favorites = [item for item in self._load_fav() if item.get("id") != tid]
+            if os.path.isfile(self._fav_path()):
+                with open(self._fav_path(), "w", encoding="utf-8") as f:
+                    json.dump(favorites, f, ensure_ascii=False, indent=2)
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+        if self.current_taskdir and os.path.realpath(self.current_taskdir) == target:
+            self.reset_context()
+        return {"ok": True}
 
     def list_skills(self):
         return {"ok": True, "skills": skills.list_skills()}

@@ -791,11 +791,26 @@ async function openTasks() {
   if (!tasks.length) list.innerHTML = '<div class="msg">暂无历史任务</div>';
   for (const t of tasks) {
     const d = el("div", "task-item");
-    const id = el("div", "t-id"); id.textContent = t.id;
+    const id = el("div", "t-id"); id.textContent = t.title || t.id;
     const sub = el("div", "t-sub");
-    sub.textContent = (t.has_doc ? "有文档" : "无文档") + " · " + new Date(t.mtime * 1000).toLocaleString();
+    sub.textContent = t.id + " · " + new Date(t.mtime * 1000).toLocaleString();
     d.appendChild(id); d.appendChild(sub);
     if (t.has_doc) d.onclick = () => loadTask(t.id);
+    const remove = el("button", "task-delete");
+    remove.textContent = "删除";
+    remove.onclick = async (event) => {
+      event.stopPropagation();
+      if (!window.confirm("删除任务及其笔记、截图和对话？此操作无法撤销。")) return;
+      if (!await flushDraft()) return;
+      const result = await api.delete_task(t.id);
+      if (!result.ok) {
+        stateEl.textContent = "删除失败：" + result.error;
+        return;
+      }
+      if (currentTaskId === t.id) await newParse();
+      await openTasks();
+    };
+    d.appendChild(remove);
     list.appendChild(d);
   }
   $("tasksModal").hidden = false;
@@ -811,7 +826,7 @@ async function loadTask(id) {
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
-  $("docTitle").textContent = id;
+  $("docTitle").textContent = r.title || id;
   $("meta").textContent = "已载入历史任务";
   imgDir = r.taskdir || "";
   setMarkdown(mdForDisplay(r.doc));
@@ -879,9 +894,9 @@ async function openHistory() {
   if (!items.length) list.innerHTML = '<div class="msg">暂无历史对话</div>';
   for (const h of items) {
     const d = el("div", "task-item");
-    const id = el("div", "t-id"); id.textContent = h.id;
+    const id = el("div", "t-id"); id.textContent = h.title || h.id;
     const sub = el("div", "t-sub");
-    sub.textContent = (h.count || 0) + " 条 · " + new Date(h.mtime * 1000).toLocaleString();
+    sub.textContent = h.id + " · " + (h.count || 0) + " 条 · " + new Date(h.mtime * 1000).toLocaleString();
     d.appendChild(id); d.appendChild(sub);
     d.onclick = () => loadHistory(h.id);
     list.appendChild(d);
@@ -900,7 +915,7 @@ async function loadHistory(tid) {
     $("welcome").hidden = true;
     $("workspace").hidden = false;
     processingEl.hidden = true;
-    $("docTitle").textContent = tid;
+    $("docTitle").textContent = r.title || tid;
     $("meta").textContent = "已载入历史任务";
     imgDir = r.taskdir || "";
     setMarkdown(mdForDisplay(r.doc));

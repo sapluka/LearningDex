@@ -570,12 +570,24 @@ body {
 }
 
 .task-item {
+  position: relative;
   padding: 8px 10px;
   border: 1px solid #eee;
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
   font-size: 13px;
+}
+
+.task-delete {
+  position: absolute;
+  right: 10px;
+  top: 9px;
+  border: 0;
+  background: transparent;
+  color: #a33333;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .task-item:hover {
