@@ -8,6 +8,10 @@
 
 如需修改前端源码，在 `app/web/` 运行 `npm ci` 和 `npm run build`，再启动桌面应用。
 
+「生成PDF」会直接保存文件，不打开打印窗口。保存位置在「设置 → PDF 输出目录」中选择；留空时使用笔记存储目录。任务归档在 `output/` 中，BV 号是视频来源编号，任务列表优先显示学习文档标题。
+
+CDN 指通过互联网提供前端代码的服务。本项目的界面代码已随软件保存，打开界面和历史任务不依赖远程 CDN；解析视频和调用模型仍需相应网络连接。
+
 ## 文档
 
 - `REQUIREMENTS.md` — 总需求
@@ -25,6 +29,7 @@ app/            后端与前端源码
   transcribe.py 语音转写（本地模型）
   shoot.py      视频帧抽取与多模态核验
   markdown_io.py 图片路径归一化与 Markdown 导出
+  pdf_export.py  桌面 PDF 直接保存
   web_server.py  本地界面与归档图片服务
   agents.py     Agent 能力（讲解/核验/对话/选区提问）
   search.py     联网查词
