@@ -9,6 +9,7 @@ import { samples } from "./samples.mjs";
 let api = null;
 let editor = null;
 let currentUrl = "";
+let currentTaskId = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const chatLog = $("chatLog");
@@ -172,6 +173,7 @@ function bind() {}
 async function newParse() {
   await api.reset_context();
   currentUrl = "";
+  currentTaskId = "";
   imgDir = "";
   $("workspace").hidden = true;
   $("welcome").hidden = false;
@@ -207,6 +209,7 @@ function renderSamples() {
 async function openSample(sample) {
   await api.reset_context(sample.markdown);
   currentUrl = "";
+  currentTaskId = "";
   imgDir = "";
   $("welcome").hidden = true;
   $("workspace").hidden = false;
@@ -230,6 +233,7 @@ async function startParse() {
   const url = $("url").value.trim();
   if (!url) { stateEl.textContent = "请先粘贴视频链接"; return; }
   currentUrl = url;
+  currentTaskId = "";
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   stateEl.textContent = "处理中：字幕提取 → 转写 → 核验 → 生成文档…";
@@ -247,6 +251,7 @@ async function startParse() {
       `${info.uploader || ""} ${info.duration ? Math.round(info.duration / 60) + "分钟" : ""}` +
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     imgDir = r.taskdir || "";
+    currentTaskId = r.id || "";
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
     setTimeout(fixImages, 400);
@@ -639,7 +644,8 @@ async function openTasks() {
 async function loadTask(id) {
   const r = await api.load_task(id);
   if (!r.ok) return;
-  currentUrl = "https://www.bilibili.com/video/" + id;
+  currentUrl = r.url || "";
+  currentTaskId = id;
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   $("docTitle").textContent = id;
@@ -667,11 +673,6 @@ function showConversation(hist) {
   }
 }
 
-function bvidOf(url) {
-  const m = /BV[0-9A-Za-z]+/.exec(url || "");
-  return m ? m[0] : "";
-}
-
 async function openFavorites() {
   const r = await api.list_favorites();
   const list = $("favList");
@@ -690,7 +691,7 @@ async function openFavorites() {
 }
 
 async function refreshStar() {
-  const id = bvidOf(currentUrl);
+  const id = currentTaskId;
   if (!id) { $("favDocBtn").textContent = "☆"; return; }
   try {
     const r = await api.list_favorites();
@@ -700,7 +701,7 @@ async function refreshStar() {
 }
 
 async function toggleCurrentFav() {
-  const id = bvidOf(currentUrl);
+  const id = currentTaskId;
   if (!id) return;
   const r = await api.toggle_favorite(id, $("docTitle").textContent);
   if (r.ok) $("favDocBtn").textContent = r.favorited ? "★" : "☆";
@@ -727,7 +728,8 @@ async function openHistory() {
 async function loadHistory(tid) {
   const r = await api.load_history(tid);
   if (!r.ok) return;
-  currentUrl = "https://www.bilibili.com/video/" + tid;
+  currentUrl = r.url || "";
+  currentTaskId = tid;
   if (r.doc) {
     $("welcome").hidden = true;
     $("workspace").hidden = false;

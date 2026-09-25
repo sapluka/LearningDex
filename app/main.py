@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -20,9 +21,24 @@ def _normalize_md(md):
     return (md or "").replace("\\==", "==")
 
 
+def _task_id(url):
+    match = re.search(r"BV[0-9A-Za-z]+", url or "")
+    return match.group(0) if match else "video_" + hashlib.sha256((url or "").encode()).hexdigest()[:12]
+
+
+def _source_url(taskdir, tid):
+    try:
+        with open(os.path.join(taskdir, "source.json"), encoding="utf-8") as f:
+            url = json.load(f).get("url", "")
+        if isinstance(url, str) and url:
+            return url
+    except (OSError, ValueError, AttributeError):
+        pass
+    return "https://www.bilibili.com/video/" + tid if tid.startswith("BV") else ""
+
+
 def _save_output(url, info, doc, cfg=None):
-    m = re.search(r"BV[0-9A-Za-z]+", url)
-    folder = os.path.join(_state_dir(cfg), m.group(0) if m else "video")
+    folder = os.path.join(_state_dir(cfg), _task_id(url))
     os.makedirs(folder, exist_ok=True)
     sub_path = os.path.join(folder, "subtitle.txt")
     doc_path = os.path.join(folder, "doc.md")
@@ -30,6 +46,8 @@ def _save_output(url, info, doc, cfg=None):
         f.write(info.get("subtitle") or "")
     with open(doc_path, "w", encoding="utf-8") as f:
         f.write(doc or "")
+    with open(os.path.join(folder, "source.json"), "w", encoding="utf-8") as f:
+        json.dump({"url": url, "title": info.get("title") or ""}, f, ensure_ascii=False)
     return {"subtitle": sub_path, "doc": doc_path}
 
 
@@ -110,9 +128,8 @@ class Api:
                           % json.dumps("\n[错误] " + str(e), ensure_ascii=False))
         self.history.append({"role": "user", "content": message})
         self.history.append({"role": "assistant", "content": "".join(buf)})
-        m = re.search(r"BV[0-9A-Za-z]+", self.current_url or "")
-        if m:
-            self._save_history(m.group(0))
+        if self.current_taskdir:
+            self._save_history(os.path.basename(self.current_taskdir))
         self._emit_js("window.__chatDone && window.__chatDone()")
 
     def ask_selection(self, selection, question):
@@ -195,10 +212,10 @@ class Api:
         if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
             return {"ok": False, "error": "非法任务标识"}
         self.history = self._load_history(tid)
-        self.current_url = "https://www.bilibili.com/video/" + tid
         self.current_doc = None
         doc = ""
         self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
+        self.current_url = _source_url(self.current_taskdir, tid)
         dp = os.path.join(self.current_taskdir, "final.md")
         if not os.path.exists(dp):
             dp = os.path.join(self.current_taskdir, "doc.md")
@@ -206,7 +223,7 @@ class Api:
             with open(dp, encoding="utf-8") as f:
                 doc = f.read()
             self.current_doc = doc
-        return {"ok": True, "id": tid, "history": self.history, "doc": doc,
+        return {"ok": True, "id": tid, "url": self.current_url, "history": self.history, "doc": doc,
                 "taskdir": self.current_taskdir}
 
     def list_tasks(self):
@@ -235,9 +252,9 @@ class Api:
         with open(p, encoding="utf-8") as f:
             doc = f.read()
         self.current_doc = doc
-        self.current_url = "https://www.bilibili.com/video/" + tid
+        self.current_url = _source_url(self.current_taskdir, tid)
         self.history = self._load_history(tid)
-        return {"ok": True, "doc": doc, "id": tid,
+        return {"ok": True, "doc": doc, "id": tid, "url": self.current_url,
                 "taskdir": self.current_taskdir, "history": self.history}
 
     def list_skills(self):
@@ -268,9 +285,7 @@ class Api:
         if isinstance(path, (list, tuple)):
             path = path[0]
         try:
-            match = re.search(r"BV[0-9A-Za-z]+", self.current_url)
-            taskdir = os.path.join(_state_dir(self.cfg), match.group(0) if match else "video") if self.current_url else ""
-            markdown_io.export_markdown(content, path, taskdir)
+            markdown_io.export_markdown(content, path, self.current_taskdir)
         except (OSError, ValueError) as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "path": path}
@@ -314,12 +329,11 @@ class Api:
             doc = agents.summarize(self.cfg, info, screenshots=screenshots)
         except Exception as e:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
-        m = re.search(r"BV[0-9A-Za-z]+", url)
-        bvid = m.group(0) if m else "video"
+        tid = _task_id(url)
         if screenshots and info.get("segments"):
             self._emit("正在截取视频截图")
             try:
-                doc = shoot.capture(doc, url, os.path.join(_state_dir(self.cfg), bvid),
+                doc = shoot.capture(doc, url, os.path.join(_state_dir(self.cfg), tid),
                                     self.cfg, validate=self.cfg.get("shot_validate", True))
             except Exception:
                 pass
@@ -327,10 +341,9 @@ class Api:
         self.current_taskdir = os.path.dirname(saved["doc"])
         self.current_doc = doc
         self.history = []
-        if m:
-            self._save_history(bvid)
+        self._save_history(tid)
         return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved,
-                "taskdir": os.path.join(_state_dir(self.cfg), bvid)}
+                "taskdir": self.current_taskdir, "id": tid}
 
 
 def main():
