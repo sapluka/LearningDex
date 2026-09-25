@@ -8,7 +8,7 @@ import uuid
 
 import webview
 
-from . import agents, config, llm, markdown_io, search, shoot, skills, subtitle, transcribe
+from . import agents, config, llm, markdown_io, search, shoot, skills, subtitle, transcribe, web_server
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -426,7 +426,7 @@ def main():
     api = Api()
     webview.create_window(
         "视频学习助手",
-        os.path.join(WEB_DIR, "index.html"),
+        web_server.create_app(WEB_DIR, lambda: _state_dir(api.cfg)),
         js_api=api,
         width=1000,
         height=750,

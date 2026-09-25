@@ -36,6 +36,16 @@ class TestMarkdownExport(unittest.TestCase):
                              "![a](out_images/1_a.png) ![b](out_images/1_a.png)")
             self.assertEqual(len(list((Path(root) / "out_images").iterdir())), 1)
 
+    def test_image_title_survives_relative_export(self):
+        with tempfile.TemporaryDirectory() as root:
+            images = Path(root) / "images"
+            images.mkdir()
+            (images / "a.png").write_bytes(b"png")
+            target = Path(root) / "note.md"
+            export_markdown('![图](images/a.png "说明")', target, root)
+            self.assertEqual(target.read_text(encoding="utf-8"),
+                             '![图](note_images/1_a.png "说明")')
+
     def test_remote_image_and_highlight(self):
         with tempfile.TemporaryDirectory() as root:
             target = Path(root) / "note.md"

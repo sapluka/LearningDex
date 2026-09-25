@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { escapeAttribute, highlightMarkdown, inlineImages, restoreMath, SAFE_PRINT_URI } from "../app/web/render_utils.mjs";
+import { escapeAttribute, highlightMarkdown, prepareEditorImages, restoreEditorImages, restoreMath, SAFE_PRINT_URI } from "../app/web/render_utils.mjs";
 
 test("image attributes cannot inject event handlers", () => {
   const escaped = escapeAttribute('file:///a.jpg" onerror="alert(1)<x>&');
@@ -9,19 +9,20 @@ test("image attributes cannot inject event handlers", () => {
   assert.ok(!escaped.includes('<'));
 });
 
-test("Markdown images with spaces remain visible and safe in the editor", () => {
-  assert.equal(inlineImages('![图解](<images/截图 1.jpg>)'),
-    '<img src="images/截图 1.jpg" alt="图解">');
-  assert.equal(inlineImages('![a](images/my shot.jpg)'),
-    '<img src="images/my shot.jpg" alt="a">');
-  assert.equal(inlineImages('![a](images/x.jpg" onerror="bad)'),
-    '<img src="images/x.jpg&quot; onerror=&quot;bad" alt="a">');
+test("Milkdown image workaround preserves relative Markdown paths", () => {
+  for (const source of ['![图解](images/shot.jpg)', '![图解](<images/截图 1.jpg>)']) {
+    const prepared = prepareEditorImages(source);
+    assert.ok(prepared.endsWith(' " ")'));
+    assert.equal(restoreEditorImages(prepared), source);
+  }
+  assert.equal(prepareEditorImages('![图](images/a.png "说明")'),
+    '![图](images/a.png "说明")');
 });
 
 test("image examples inside code fences remain literal", () => {
   const md = "```md\n![example](images/missing.png)\n```\n\n![real](images/a.png)";
-  assert.equal(inlineImages(md),
-    '```md\n![example](images/missing.png)\n```\n\n<img src="images/a.png" alt="real">');
+  assert.equal(prepareEditorImages(md),
+    '```md\n![example](images/missing.png)\n```\n\n![real](images/a.png " ")');
 });
 
 test("print links accept local images without accepting script URLs", () => {

@@ -1,5 +1,6 @@
 yt-dlp>=2025.6.30
 litellm>=1.50.0
 pywebview>=5.3
+bottle>=0.13
 faster-whisper>=1.2
 imageio-ffmpeg>=0.6

@@ -25,6 +25,7 @@ app/            后端与前端源码
   transcribe.py 语音转写（本地模型）
   shoot.py      视频帧抽取与多模态核验
   markdown_io.py 图片路径归一化与 Markdown 导出
+  web_server.py  本地界面与归档图片服务
   agents.py     Agent 能力（讲解/核验/对话/选区提问）
   search.py     联网查词
   web/          前端界面、示例文档、文档渲染模块

@@ -37,19 +37,24 @@ def _local_path(src, source_dir):
 
 
 def _rewrite_images(content, image_url):
-    def markdown_image(alt, src):
+    def markdown_image(alt, src, title=""):
         alt = alt.replace("[", "\\[").replace("]", "\\]")
-        return f"![{alt}]({image_url(src)})"
+        suffix = f' "{title}"' if title else ""
+        return f"![{alt}]({image_url(src)}{suffix})"
 
     def replace_tag(match):
         tag = _ImageAttributes()
         tag.feed(match.group(0))
         src = tag.attrs.get("src", "")
-        return markdown_image(tag.attrs.get("alt", "") or "", src) if src else match.group(0)
+        return markdown_image(tag.attrs.get("alt", "") or "", src,
+                              tag.attrs.get("title", "") or "") if src else match.group(0)
 
     def replace_md(match):
-        src = match.group(2).strip("<>")
-        return markdown_image(match.group(1), src)
+        value = match.group(2).strip()
+        target = re.fullmatch(r'(<[^>]+>|\S+)(?:\s+(["\'])(.*?)\2)?', value)
+        src = target.group(1).strip("<>") if target else value.strip("<>")
+        title = target.group(3) if target else ""
+        return markdown_image(match.group(1), src, title or "")
 
     def rewrite_prose(part):
         md = MARKDOWN_IMAGE.sub(replace_md, part.replace("\\==", "=="))

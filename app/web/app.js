@@ -4,7 +4,7 @@ import { gfm } from "@milkdown/preset-gfm";
 import { nord } from "@milkdown/theme-nord";
 import { history } from "@milkdown/plugin-history";
 import { samples } from "./samples.mjs";
-import { highlightMarkdown, inlineImages, restoreMath } from "./render_utils.mjs";
+import { highlightMarkdown, prepareEditorImages, restoreEditorImages, restoreMath } from "./render_utils.mjs";
 import { createDocumentView } from "./document_view.mjs";
 
 let api = null;
@@ -31,11 +31,11 @@ window.__setStatus = (t) => {
 };
 
 function setMarkdown(md) {
-  md = inlineImages(md);
+  md = prepareEditorImages(md);
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const parser = ctx.get(parserCtx);
-    const doc = parser(md);
+    const doc = parser(md || "");
     view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content));
   });
 }
@@ -47,7 +47,7 @@ function getMarkdown() {
     const view = ctx.get(editorViewCtx);
     md = serializer(view.state.doc);
   });
-  return restoreMath(md);
+  return restoreMath(restoreEditorImages(documentView.mdForStorage(md)));
 }
 
 function formatSelection(marker) {

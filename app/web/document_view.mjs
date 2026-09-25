@@ -23,12 +23,18 @@ function fixImages() {
 }
 
 function absBase() {
-  return imgDir ? "file:///" + imgDir.replace(/\\/g, "/").replace(/^\/+/, "") : "";
+  const taskId = imgDir.split(/[\\/]/).filter(Boolean).pop();
+  return taskId ? window.location.origin + "/task-images/" + encodeURIComponent(taskId) : "";
 }
 
 function mdForDisplay(md) {
   const b = absBase();
   return b ? (md || "").replace(/\]\(images\//g, "](" + b + "/images/") : (md || "");
+}
+
+function mdForStorage(md) {
+  const b = absBase();
+  return b ? (md || "").split(b + "/images/").join("images/") : (md || "");
 }
 
 let mermaidLib = null;
@@ -225,6 +231,6 @@ function renderEditorMath() {
       mathLayer.innerHTML = "";
     },
     scheduleHighlights, scheduleMermaid, renderHighlights, renderMermaids,
-    renderMessageMermaid, buildPrintDoc, fixImages, mdForDisplay,
+    renderMessageMermaid, buildPrintDoc, fixImages, mdForDisplay, mdForStorage,
   };
 }
