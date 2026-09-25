@@ -162,7 +162,7 @@ body {
 
 /* 中间栏 */
 .center {
-  flex: 3;
+  flex: 0 0 calc((100% - 196px) / 2);
   display: flex;
   flex-direction: column;
   padding: 26px 30px;
@@ -405,12 +405,27 @@ body {
 
 /* 右栏 */
 .chat {
-  flex: 3;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   border-left: 1px solid #e6e6ea;
   background: #ffffff;
   min-height: 0;
+  min-width: 0;
+}
+
+.panel-divider {
+  flex: 0 0 6px;
+  background: #e6e6ea;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.panel-divider:hover,
+.panel-divider:focus,
+.panel-divider.dragging {
+  background: #7890ec;
 }
 
 .chat-head {

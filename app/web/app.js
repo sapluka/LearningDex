@@ -6,6 +6,7 @@ import { history } from "@milkdown/plugin-history";
 import { samples } from "./samples.mjs";
 import { highlightMarkdown, prepareEditorImages, restoreEditorImages, restoreMath } from "./render_utils.mjs";
 import { createDocumentView } from "./document_view.mjs";
+import { initPanelDivider } from "./panel_divider.mjs";
 
 let api = null;
 let editor = null;
@@ -122,6 +123,7 @@ function fillSettings(cfg) {
 async function init() {
   api = window.pywebview.api;
   fillSettings(await api.load_config());
+  initPanelDivider(() => { scheduleHighlights(); scheduleMermaid(); });
   editor = await Editor.make()
     .config((ctx) => ctx.set(rootCtx, $("editor")))
     .use(nord)
