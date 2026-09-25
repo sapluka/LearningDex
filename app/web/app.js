@@ -155,7 +155,7 @@ async function init() {
     window.print();
   };
   $("exportMdBtn").onclick = exportMarkdown;
-  $("githubBtn").onclick = () => openLink("https://github.com");
+  $("githubBtn").onclick = () => openLink("https://github.com/sapluka/LearningDex");
   $("settingsBtn").onclick = () => ($("settings").hidden = false);
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
