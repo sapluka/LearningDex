@@ -104,6 +104,7 @@ function readSettings() {
     bili_sessdata: $("sessdata").value,
     cookies_file: $("cookiesFile").value,
     output_dir: $("outputDir").value,
+    pdf_output_dir: $("pdfOutputDir").value,
     ...readQuick(),
   };
 }
@@ -116,6 +117,7 @@ function fillSettings(cfg) {
   $("sessdata").value = cfg.bili_sessdata || "";
   $("cookiesFile").value = cfg.cookies_file || "";
   $("outputDir").value = cfg.output_dir || "";
+  $("pdfOutputDir").value = cfg.pdf_output_dir || "";
   $("whisperModel").value = cfg.whisper_model || "base";
   $("proofread").checked = cfg.proofread !== false;
 }
@@ -146,21 +148,39 @@ async function init() {
   $("clearQuote").onclick = clearQuote;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
   $("pdfBtn").onclick = async () => {
-    await flushDraft();
-    const saved = await api.save_final(getMarkdown());
-    if (!saved.ok) {
-      stateEl.textContent = "保存最终笔记失败：" + saved.error;
+    if (!await flushDraft()) return;
+    stateEl.textContent = "正在生成 PDF";
+    stateEl.style.color = "#666";
+    try {
+      await buildPrintDoc();
+      await Promise.all([...$("printRoot").querySelectorAll("img")].map((img) =>
+        new Promise((resolve, reject) => {
+          const check = () => img.naturalWidth ? resolve() : reject(new Error("文档图片加载失败"));
+          if (img.complete) { check(); return; }
+          const timer = setTimeout(() => reject(new Error("文档图片加载超时")), 10000);
+          img.onload = () => { clearTimeout(timer); check(); };
+          img.onerror = () => { clearTimeout(timer); check(); };
+        })));
+      await document.fonts.ready;
+      const saved = await api.generate_pdf(getMarkdown(), $("docTitle").textContent);
+      if (!saved.ok) throw new Error(saved.error || "未知错误");
+      stateEl.textContent = "PDF 已保存：" + saved.path;
+      stateEl.style.color = "green";
+    } catch (e) {
+      stateEl.textContent = "生成 PDF 失败：" + e.message;
       stateEl.style.color = "red";
-      return;
     }
-    await buildPrintDoc();
-    window.print();
   };
   $("exportMdBtn").onclick = exportMarkdown;
   $("githubBtn").onclick = () => openLink("https://github.com/sapluka/LearningDex");
   $("settingsBtn").onclick = () => ($("settings").hidden = false);
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
+  $("choosePdfDir").onclick = async () => {
+    const result = await api.choose_pdf_output_dir();
+    if (result.ok && result.path) $("pdfOutputDir").value = result.path;
+    else if (!result.ok) $("setMsg").textContent = "选择目录失败：" + result.error;
+  };
   $("testBtn").onclick = testConnection;
   $("skillBtn").onclick = openSkills;
   $("skillClose").onclick = () => ($("skillsModal").hidden = true);

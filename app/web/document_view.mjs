@@ -117,8 +117,7 @@ async function buildPrintDoc() {
   md = md.replace(/\\==/g, "==");
   md = highlightMarkdown(md);
   if (!window.marked || !window.DOMPurify) {
-    root.textContent = md;
-    return;
+    throw new Error("文档渲染组件未加载，请重新打开软件后重试");
   }
   let html = window.DOMPurify.sanitize(window.marked.parse(md, { breaks: true, gfm: true }),
     { USE_PROFILES: { html: true }, ALLOWED_URI_REGEXP: SAFE_PRINT_URI });

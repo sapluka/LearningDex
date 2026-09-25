@@ -8,7 +8,7 @@ import uuid
 
 import webview
 
-from . import agents, config, llm, markdown_io, search, shoot, skills, subtitle, transcribe, web_server
+from . import agents, config, llm, markdown_io, pdf_export, search, shoot, skills, subtitle, transcribe, web_server
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -124,6 +124,29 @@ class Api:
         except OSError as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "path": path}
+
+    def generate_pdf(self, content, title="学习笔记"):
+        saved = self.save_final(content)
+        if not saved.get("ok"):
+            return saved
+        try:
+            directory = self.cfg.get("pdf_output_dir") or _state_dir(self.cfg)
+            os.makedirs(directory, exist_ok=True)
+            tid = os.path.basename(self.current_taskdir) if self.current_taskdir else ""
+            path = pdf_export.pdf_path(directory, title, tid)
+            pdf_export.print_current_page(path, webview.windows[0])
+            return {"ok": True, "path": path}
+        except (OSError, RuntimeError, TimeoutError, IndexError) as e:
+            return {"ok": False, "error": str(e)}
+
+    def choose_pdf_output_dir(self):
+        try:
+            path = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            if isinstance(path, (list, tuple)):
+                path = path[0] if path else ""
+            return {"ok": True, "path": path or ""}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def save_draft(self, content):
         self.update_doc(content)

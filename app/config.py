@@ -16,6 +16,7 @@ DEFAULT = {
     "screenshots": True,
     "shot_validate": True,
     "output_dir": "",
+    "pdf_output_dir": "",
     "bili_sessdata": "",
     "cookies_file": "",
     "cookies_text": "",
