@@ -4,10 +4,13 @@ export function escapeAttribute(value) {
 }
 
 export function inlineImages(markdown) {
-  return (markdown || "").replace(/!\[([^\]]*)\]\((<[^>]+>|[^)\n]+)\)/g, (_, alt, source) => {
-    const src = source.startsWith("<") ? source.slice(1, -1) : source.trim();
-    return '<img src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(alt) + '">';
-  });
+  return (markdown || "").split(/(^```[\s\S]*?^```|^~~~[\s\S]*?^~~~)/gm).map((part, index) => {
+    if (index % 2) return part;
+    return part.replace(/!\[([^\]]*)\]\((<[^>]+>|[^)\n]+)\)/g, (_, alt, source) => {
+      const src = source.startsWith("<") ? source.slice(1, -1) : source.trim();
+      return '<img src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(alt) + '">';
+    });
+  }).join("");
 }
 
 export const SAFE_PRINT_URI = /^(?:(?:https?|mailto|file):|\/|\.\.?\/|[^:/?#][^:]*$)/i;

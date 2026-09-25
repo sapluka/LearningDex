@@ -18,6 +18,12 @@ test("Markdown images with spaces remain visible and safe in the editor", () => 
     '<img src="images/x.jpg&quot; onerror=&quot;bad" alt="a">');
 });
 
+test("image examples inside code fences remain literal", () => {
+  const md = "```md\n![example](images/missing.png)\n```\n\n![real](images/a.png)";
+  assert.equal(inlineImages(md),
+    '```md\n![example](images/missing.png)\n```\n\n<img src="images/a.png" alt="real">');
+});
+
 test("print links accept local images without accepting script URLs", () => {
   for (const uri of ["file:///D:/notes/img.jpg", "images/shot.jpg", "https://example.org/a.png"])
     assert.ok(SAFE_PRINT_URI.test(uri), uri);

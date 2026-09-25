@@ -10,6 +10,9 @@ from urllib.request import url2pathname
 
 IMAGE_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\((<?[^)]+>?)\)")
+FENCED_BLOCK = re.compile(
+    r"(?ms)^[ \t]{0,3}(?P<fence>`{3,}|~{3,})[^\r\n]*\r?\n.*?^[ \t]{0,3}(?P=fence)[ \t]*(?:\r?\n|$)"
+)
 
 
 class _ImageAttributes(html.parser.HTMLParser):
@@ -48,8 +51,18 @@ def _rewrite_images(content, image_url):
         src = match.group(2).strip("<>")
         return markdown_image(match.group(1), src)
 
-    md = MARKDOWN_IMAGE.sub(replace_md, (content or "").replace("\\==", "=="))
-    return IMAGE_TAG.sub(replace_tag, md)
+    def rewrite_prose(part):
+        md = MARKDOWN_IMAGE.sub(replace_md, part.replace("\\==", "=="))
+        return IMAGE_TAG.sub(replace_tag, md)
+
+    content = content or ""
+    pieces = []
+    end = 0
+    for match in FENCED_BLOCK.finditer(content):
+        pieces.extend((rewrite_prose(content[end:match.start()]), match.group(0)))
+        end = match.end()
+    pieces.append(rewrite_prose(content[end:]))
+    return "".join(pieces)
 
 
 def normalize_markdown(content, source_dir=""):

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from urllib.parse import quote
 
-from app.markdown_io import export_markdown
+from app.markdown_io import export_markdown, normalize_markdown
 
 
 class TestMarkdownExport(unittest.TestCase):
@@ -49,6 +49,20 @@ class TestMarkdownExport(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 export_markdown("![missing](images/no.png)", target, root)
             self.assertFalse(target.exists())
+
+    def test_code_fences_keep_image_examples_literal(self):
+        md = "```md\n![例子](images/missing.png)\n<img src=\"images/no.png\">\n```\n\n真实 ![图](images/a.png)"
+        with tempfile.TemporaryDirectory() as root:
+            source = Path(root) / "images"
+            source.mkdir()
+            (source / "a.png").write_bytes(b"png")
+            target = Path(root) / "out.md"
+            self.assertIn("![例子](images/missing.png)", normalize_markdown(md, root))
+            export_markdown(md, target, root)
+            result = target.read_text(encoding="utf-8")
+            self.assertIn("![例子](images/missing.png)", result)
+            self.assertIn('<img src="images/no.png">', result)
+            self.assertIn("![图](out_images/1_a.png)", result)
 
 
 if __name__ == "__main__":
