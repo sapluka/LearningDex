@@ -1,6 +1,6 @@
 # LearningDex
 
-视频学习辅助 Agent（编辑器 + Agent 一体化）：输入视频链接，自动提取字幕或本地转写，由 Agent 生成可编辑的 Markdown 学习文档，支持对话提问、联网查词、导出笔记。
+视频学习辅助 Agent（编辑器 + Agent 一体化）：输入视频链接，自动提取字幕或本地转写，由 Agent 生成可编辑的 Markdown 学习文档，支持对话提问和导出笔记。
 
 ## 运行
 
@@ -31,8 +31,8 @@ app/            后端与前端源码
   markdown_io.py 图片路径归一化与 Markdown 导出
   pdf_export.py  桌面 PDF 直接保存
   web_server.py  本地界面与归档图片服务
-  agents.py     Agent 能力（讲解/核验/对话/选区提问）
-  search.py     联网查词
+  agents.py     Agent 能力（讲解/核验/对话）
+  search.py     资料查询模块（当前界面未使用）
   web/          前端界面、示例文档、文档渲染模块
 tests/          单元测试
 skills/         可插拔 skill
