@@ -32,6 +32,23 @@ class TestSkills(unittest.TestCase):
                     f.write("x")
                 self.assertEqual(skills.list_skills(), [])
 
+    def test_txt_skill_can_be_loaded_edited_and_deleted(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(skills, "SKILLS_DIR", d):
+                txt = os.path.join(d, "讲解.txt")
+                with open(txt, "w", encoding="utf-8") as f:
+                    f.write("旧内容")
+                self.assertEqual(skills.get("讲解"), "旧内容")
+                self.assertTrue(skills.save("讲解", "新内容"))
+                self.assertEqual(skills.get("讲解"), "新内容")
+                self.assertFalse(os.path.exists(os.path.join(d, "讲解.md")))
+                with open(os.path.join(d, "讲解.md"), "w", encoding="utf-8") as f:
+                    f.write("优先内容")
+                self.assertEqual(skills.get("讲解"), "优先内容")
+                self.assertEqual(len(skills.list_skills()), 1)
+                self.assertTrue(skills.delete("讲解"))
+                self.assertFalse(os.path.exists(txt))
+
 
 if __name__ == "__main__":
     unittest.main()
