@@ -299,7 +299,8 @@ body {
 }
 
 .tb {
-  width: 30px;
+  min-width: 46px;
+  padding: 0 8px;
   height: 26px;
   border: 1px solid #e0e0e5;
   background: #fff;

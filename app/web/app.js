@@ -635,7 +635,7 @@ async function loadTask(id) {
   $("workspace").hidden = false;
   processingEl.hidden = true;
   $("docTitle").textContent = r.title || id;
-  $("meta").textContent = "已载入历史任务";
+  $("meta").textContent = "已打开保存的学习文档";
   documentView.setImageDir(r.taskdir || "");
   setMarkdown(mdForDisplay(r.doc));
   scheduleHighlights();
@@ -724,7 +724,7 @@ async function loadHistory(tid) {
     $("workspace").hidden = false;
     processingEl.hidden = true;
     $("docTitle").textContent = r.title || tid;
-    $("meta").textContent = "已载入历史任务";
+    $("meta").textContent = "已打开保存的学习文档";
     documentView.setImageDir(r.taskdir || "");
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
