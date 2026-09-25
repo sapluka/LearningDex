@@ -33,6 +33,43 @@ def _local_path(src, source_dir):
     return os.path.join(source_dir, unquote(src)) if source_dir else None
 
 
+def _rewrite_images(content, image_url):
+    def markdown_image(alt, src):
+        alt = alt.replace("[", "\\[").replace("]", "\\]")
+        return f"![{alt}]({image_url(src)})"
+
+    def replace_tag(match):
+        tag = _ImageAttributes()
+        tag.feed(match.group(0))
+        src = tag.attrs.get("src", "")
+        return markdown_image(tag.attrs.get("alt", "") or "", src) if src else match.group(0)
+
+    def replace_md(match):
+        src = match.group(2).strip("<>")
+        return markdown_image(match.group(1), src)
+
+    md = MARKDOWN_IMAGE.sub(replace_md, (content or "").replace("\\==", "=="))
+    return IMAGE_TAG.sub(replace_tag, md)
+
+
+def normalize_markdown(content, source_dir=""):
+    """Keep task images relative when serializing the live editor document."""
+    source_dir = os.path.abspath(source_dir) if source_dir else ""
+
+    def image_url(src):
+        path = _local_path(src, source_dir)
+        if path and source_dir:
+            path = os.path.abspath(path)
+            try:
+                if os.path.commonpath((path, source_dir)) == source_dir:
+                    return quote(os.path.relpath(path, source_dir).replace("\\", "/"), safe="/-._~")
+            except ValueError:
+                pass
+        return src
+
+    return _rewrite_images(content, image_url)
+
+
 def export_markdown(content, destination, source_dir=""):
     """Save Markdown and copy local images beside it using relative links."""
     destination = os.path.abspath(destination)
@@ -54,22 +91,7 @@ def export_markdown(content, destination, source_dir=""):
             copied[path] = name
         return quote(asset_name + "/" + copied[path], safe="/-._~")
 
-    def markdown_image(alt, src):
-        alt = alt.replace("[", "\\[").replace("]", "\\]")
-        return f"![{alt}]({image_url(src)})"
-
-    def replace_tag(match):
-        tag = _ImageAttributes()
-        tag.feed(match.group(0))
-        src = tag.attrs.get("src", "")
-        return markdown_image(tag.attrs.get("alt", "") or "", src) if src else match.group(0)
-
-    def replace_md(match):
-        src = match.group(2).strip("<>")
-        return markdown_image(match.group(1), src)
-
-    md = MARKDOWN_IMAGE.sub(replace_md, (content or "").replace("\\==", "=="))
-    md = IMAGE_TAG.sub(replace_tag, md)
+    md = _rewrite_images(content, image_url)
     with open(destination, "w", encoding="utf-8") as f:
         f.write(md)
     return destination

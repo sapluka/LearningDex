@@ -121,7 +121,16 @@ async function init() {
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
-  $("pdfBtn").onclick = async () => { await buildPrintDoc(); window.print(); };
+  $("pdfBtn").onclick = async () => {
+    const saved = await api.save_final(getMarkdown());
+    if (!saved.ok) {
+      stateEl.textContent = "保存最终笔记失败：" + saved.error;
+      stateEl.style.color = "red";
+      return;
+    }
+    await buildPrintDoc();
+    window.print();
+  };
   $("exportMdBtn").onclick = exportMarkdown;
   $("githubBtn").onclick = () => openLink("https://github.com");
   $("settingsBtn").onclick = () => ($("settings").hidden = false);
@@ -284,6 +293,7 @@ async function sendChat() {
   docChatPush("user", q);
   docChatPush("ai", "");
   try {
+    if (!$("workspace").hidden) await api.update_doc(getMarkdown());
     await api.chat(q);
   } catch (e) {
     docChatPush("ai", "异常：" + e);
@@ -538,6 +548,7 @@ async function askSelection(selection, question) {
   docChatPush("user", "引用：" + selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
   docChatPush("ai", "");
   try {
+    await api.update_doc(getMarkdown());
     await api.ask_selection(selection, question);
   } catch (e) {
     docChatPush("ai", "异常：" + e);
@@ -639,7 +650,21 @@ async function loadTask(id) {
   setTimeout(fixImages, 400);
   refreshStar();
   setTimeout(renderMermaids, 700);
+  showConversation(r.history || []);
   $("tasksModal").hidden = true;
+}
+
+function showConversation(hist) {
+  chatLog.innerHTML = "";
+  if (hist.length) {
+    ensureChatLog();
+    for (const m of hist) docChatPush(m.role === "user" ? "user" : "ai", m.content);
+  } else {
+    chatLog.style.display = "flex";
+    chatLog.style.alignItems = "center";
+    chatLog.style.justifyContent = "center";
+    chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
+  }
 }
 
 function bvidOf(url) {
@@ -715,17 +740,7 @@ async function loadHistory(tid) {
     refreshStar();
     setTimeout(renderMermaids, 700);
   }
-  const hist = r.history || [];
-  chatLog.style.display = "flex";
-  chatLog.innerHTML = "";
-  if (hist.length) {
-    ensureChatLog();
-    for (const m of hist) docChatPush(m.role === "user" ? "user" : "ai", m.content);
-  } else {
-    chatLog.style.alignItems = "center";
-    chatLog.style.justifyContent = "center";
-    chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
-  }
+  showConversation(r.history || []);
   $("histModal").hidden = true;
 }
 

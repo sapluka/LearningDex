@@ -39,6 +39,7 @@ class Api:
         self.history = []
         self.current_doc = None
         self.current_url = ""
+        self.current_taskdir = ""
 
     def load_config(self):
         return self.cfg
@@ -47,7 +48,24 @@ class Api:
         self.history = []
         self.current_doc = doc
         self.current_url = ""
+        self.current_taskdir = ""
         return {"ok": True}
+
+    def update_doc(self, content):
+        self.current_doc = markdown_io.normalize_markdown(content, self.current_taskdir)
+        return {"ok": True}
+
+    def save_final(self, content):
+        self.update_doc(content)
+        if not self.current_taskdir:
+            return {"ok": True, "path": ""}
+        try:
+            path = os.path.join(self.current_taskdir, "final.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.current_doc)
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+        return {"ok": True, "path": path}
 
     def save_config(self, c):
         c = {**self.cfg, **c}
@@ -178,14 +196,18 @@ class Api:
             return {"ok": False, "error": "非法任务标识"}
         self.history = self._load_history(tid)
         self.current_url = "https://www.bilibili.com/video/" + tid
+        self.current_doc = None
         doc = ""
-        dp = os.path.join(_state_dir(self.cfg), tid, "doc.md")
+        self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
+        dp = os.path.join(self.current_taskdir, "final.md")
+        if not os.path.exists(dp):
+            dp = os.path.join(self.current_taskdir, "doc.md")
         if os.path.exists(dp):
             with open(dp, encoding="utf-8") as f:
                 doc = f.read()
             self.current_doc = doc
         return {"ok": True, "id": tid, "history": self.history, "doc": doc,
-                "taskdir": os.path.join(_state_dir(self.cfg), tid)}
+                "taskdir": self.current_taskdir}
 
     def list_tasks(self):
         d = _state_dir(self.cfg)
@@ -204,15 +226,19 @@ class Api:
     def load_task(self, tid):
         if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
             return {"ok": False, "error": "非法任务标识"}
-        p = os.path.join(_state_dir(self.cfg), tid, "doc.md")
+        self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
+        p = os.path.join(self.current_taskdir, "final.md")
+        if not os.path.exists(p):
+            p = os.path.join(self.current_taskdir, "doc.md")
         if not os.path.exists(p):
             return {"ok": False, "error": "未找到该任务的文档"}
         with open(p, encoding="utf-8") as f:
             doc = f.read()
         self.current_doc = doc
         self.current_url = "https://www.bilibili.com/video/" + tid
+        self.history = self._load_history(tid)
         return {"ok": True, "doc": doc, "id": tid,
-                "taskdir": os.path.join(_state_dir(self.cfg), tid)}
+                "taskdir": self.current_taskdir, "history": self.history}
 
     def list_skills(self):
         return {"ok": True, "skills": skills.list_skills()}
@@ -257,6 +283,7 @@ class Api:
 
     def generate_doc(self, url):
         self.current_url = url
+        self.current_taskdir = ""
         self._emit("正在提取视频字幕")
         info = subtitle.extract(url, self.cfg)
         note = ""
@@ -297,6 +324,7 @@ class Api:
             except Exception:
                 pass
         saved = _save_output(url, info, doc, self.cfg)
+        self.current_taskdir = os.path.dirname(saved["doc"])
         self.current_doc = doc
         self.history = []
         if m:
