@@ -601,7 +601,11 @@ async function openTasks() {
 async function loadTask(id) {
   if (!await flushDraft()) return;
   const r = await api.load_task(id);
-  if (!r.ok) return;
+  if (!r.ok) {
+    stateEl.textContent = "打开任务失败：" + r.error;
+    stateEl.style.color = "red";
+    return;
+  }
   currentUrl = r.url || "";
   currentTaskId = id;
   clearQuote();

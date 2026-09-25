@@ -45,11 +45,18 @@ class TestTasks(unittest.TestCase):
             self.assertEqual(api.current_taskdir, "")
 
     def test_load_task_invalid(self):
-        api = main.Api()
-        api.cfg = {}
-        self.assertFalse(api.load_task("../x")["ok"])
-        self.assertFalse(api.load_task("nope")["ok"])
-        self.assertFalse(api.delete_task("../x")["ok"])
+        with tempfile.TemporaryDirectory() as d:
+            api = main.Api()
+            api.cfg = {"output_dir": d}
+            api.current_taskdir = "existing-task"
+            api.current_doc = "# current"
+            api.history = [{"role": "user", "content": "current"}]
+            self.assertFalse(api.load_task("../x")["ok"])
+            self.assertFalse(api.load_task("nope")["ok"])
+            self.assertEqual(api.current_taskdir, "existing-task")
+            self.assertEqual(api.current_doc, "# current")
+            self.assertEqual(len(api.history), 1)
+            self.assertFalse(api.delete_task("../x")["ok"])
 
 
 if __name__ == "__main__":

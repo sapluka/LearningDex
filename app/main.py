@@ -288,19 +288,23 @@ class Api:
     def load_task(self, tid):
         if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
             return {"ok": False, "error": "非法任务标识"}
-        self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
-        p = next((os.path.join(self.current_taskdir, name) for name in
+        taskdir = os.path.join(_state_dir(self.cfg), tid)
+        p = next((os.path.join(taskdir, name) for name in
                   ("draft.md", "final.md", "doc.md")
-                  if os.path.exists(os.path.join(self.current_taskdir, name))), "")
+                  if os.path.exists(os.path.join(taskdir, name))), "")
         if not p:
             return {"ok": False, "error": "未找到该任务的文档"}
+        try:
+            with open(p, encoding="utf-8") as f:
+                doc = f.read()
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
         with self._chat_lock:
             self._context_token += 1
-        with open(p, encoding="utf-8") as f:
-            doc = f.read()
-        self.current_doc = doc
-        self.current_url = _source_url(self.current_taskdir, tid)
-        self.history = self._load_history(tid)
+            self.current_taskdir = taskdir
+            self.current_doc = doc
+            self.current_url = _source_url(taskdir, tid)
+            self.history = self._load_history(tid)
         return {"ok": True, "doc": doc, "id": tid, "title": _source_info(self.current_taskdir).get("title") or tid,
                 "url": self.current_url,
                 "taskdir": self.current_taskdir, "history": self.history}
