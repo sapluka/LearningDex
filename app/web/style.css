@@ -563,6 +563,49 @@ body {
   margin-bottom: 10px;
 }
 
+.editor,
+.chat-log,
+.task-list,
+.mmd-item,
+.bub.ai pre {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.editor:hover,
+.chat-log:hover,
+.task-list:hover,
+.mmd-item:hover,
+.bub.ai pre:hover {
+  scrollbar-color: #a9afbd transparent;
+}
+
+.editor::-webkit-scrollbar,
+.chat-log::-webkit-scrollbar,
+.task-list::-webkit-scrollbar,
+.mmd-item::-webkit-scrollbar,
+.bub.ai pre::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.editor::-webkit-scrollbar-thumb,
+.chat-log::-webkit-scrollbar-thumb,
+.task-list::-webkit-scrollbar-thumb,
+.mmd-item::-webkit-scrollbar-thumb,
+.bub.ai pre::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 6px;
+}
+
+.editor:hover::-webkit-scrollbar-thumb,
+.chat-log:hover::-webkit-scrollbar-thumb,
+.task-list:hover::-webkit-scrollbar-thumb,
+.mmd-item:hover::-webkit-scrollbar-thumb,
+.bub.ai pre:hover::-webkit-scrollbar-thumb {
+  background: #a9afbd;
+}
+
 .task-item {
   position: relative;
   padding: 8px 10px;
