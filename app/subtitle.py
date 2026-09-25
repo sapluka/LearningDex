@@ -54,7 +54,9 @@ def _write_netscape():
 def _external_cookies():
     f = (_cfg.get("cookies_file") or "").strip()
     if f and os.path.exists(f):
-        return _normalize_cookies(f)
+        normalized = _normalize_cookies(f)
+        if normalized:
+            return normalized
     text = (_cfg.get("cookies_text") or "").strip()
     if text:
         p = os.path.join(tempfile.gettempdir(), "learndex_bili_cookies_custom.txt")
@@ -98,9 +100,12 @@ def _jar_ensure():
     else:
         opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
         opener.addheaders = [("User-Agent", UA), ("Referer", "https://www.bilibili.com/")]
-        opener.open("https://www.bilibili.com/", timeout=15)
+        try:
+            opener.open("https://www.bilibili.com/", timeout=15)
+        except OSError:
+            pass
     sess = (_cfg.get("bili_sessdata") or "").strip()
-    if sess:
+    if sess and not ext:
         jar.set_cookie(_sess_cookie(sess))
     _jar = jar
     _write_netscape()
