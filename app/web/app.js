@@ -830,6 +830,11 @@ async function loadHistory(tid) {
     setTimeout(fixImages, 400);
     refreshStar();
     setTimeout(renderMermaids, 700);
+  } else {
+    currentTaskId = "";
+    imgDir = "";
+    $("workspace").hidden = true;
+    $("welcome").hidden = false;
   }
   showConversation(r.history || []);
   $("histModal").hidden = true;

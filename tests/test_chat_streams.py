@@ -50,6 +50,20 @@ class TestChatStreams(unittest.TestCase):
         self.assertEqual(api.history, [])
         self.assertEqual(api.current_doc, "新文档")
 
+    def test_general_chat_is_restored_without_creating_a_video_task(self):
+        with tempfile.TemporaryDirectory() as root:
+            api = main.Api()
+            api.cfg = {"output_dir": root}
+            with mock.patch.object(agents, "chat_stream", return_value=iter(["你好"])):
+                api.chat("你好", "general-1")
+                wait_until(lambda: (Path(root) / "general" / "chat.json").exists())
+            self.assertEqual(api.list_tasks()["tasks"], [])
+            api.reset_context()
+            loaded = api.load_history("general")
+            self.assertEqual(loaded["doc"], "")
+            self.assertEqual(loaded["history"][-1]["content"], "你好")
+            self.assertEqual(api.current_taskdir, "")
+
 
 if __name__ == "__main__":
     unittest.main()

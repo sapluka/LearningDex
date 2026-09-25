@@ -125,10 +125,11 @@ class Api:
 
     def _start_stream(self, request_id, user_text, stream):
         threading.Thread(target=self._stream_worker,
-                         args=(request_id, user_text, stream, self._context_token, self.current_taskdir),
+                         args=(request_id, user_text, stream, self._context_token,
+                               self.current_taskdir, not self.current_taskdir and not self.current_doc),
                          daemon=True).start()
 
-    def _stream_worker(self, request_id, user_text, stream, token, taskdir):
+    def _stream_worker(self, request_id, user_text, stream, token, taskdir, general):
         buf = []
         try:
             for chunk in stream:
@@ -148,6 +149,8 @@ class Api:
                 self.history.append({"role": "assistant", "content": "".join(buf)})
                 if taskdir:
                     self._save_history(os.path.basename(taskdir))
+                elif general:
+                    self._save_history("general")
         self._emit_js("window.__chatDone && window.__chatDone(%s)" % json.dumps(request_id))
 
     def ask_selection(self, selection, question, request_id=None):
@@ -226,6 +229,11 @@ class Api:
             self._context_token += 1
         self.history = self._load_history(tid)
         self.current_doc = None
+        if tid == "general":
+            self.current_taskdir = ""
+            self.current_url = ""
+            return {"ok": True, "id": tid, "url": "", "history": self.history,
+                    "doc": "", "taskdir": ""}
         doc = ""
         self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
         self.current_url = _source_url(self.current_taskdir, tid)
@@ -245,7 +253,7 @@ class Api:
         if os.path.isdir(d):
             for name in sorted(os.listdir(d), reverse=True):
                 p = os.path.join(d, name)
-                if os.path.isdir(p):
+                if os.path.isdir(p) and os.path.exists(os.path.join(p, "doc.md")):
                     out.append({
                         "id": name,
                         "has_doc": os.path.exists(os.path.join(p, "doc.md")),
