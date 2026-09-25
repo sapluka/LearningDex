@@ -9,9 +9,9 @@ from app import agents, config, llm, subtitle, transcribe
 
 
 class TestSubtitle(unittest.TestCase):
-    def test_pick_bili_en_preferred(self):
+    def test_pick_bili_zh_preferred(self):
         subs = [{"lan": "zh-CN", "subtitle_url": "/zh"}, {"lan": "en-US", "subtitle_url": "/en"}]
-        self.assertEqual(subtitle._pick_bili_sub(subs)["subtitle_url"], "/en")
+        self.assertEqual(subtitle._pick_bili_sub(subs)["subtitle_url"], "/zh")
 
     def test_pick_bili_zh(self):
         subs = [{"lan": "zh-CN", "subtitle_url": "/zh"}]

@@ -1,4 +1,5 @@
 import hashlib
+import html
 import http.cookiejar
 import json
 import os
@@ -10,7 +11,7 @@ import urllib.request
 
 import yt_dlp
 
-LANGS = ("zh-Hans", "zh-CN", "zh")
+LANGS = ("zh-Hans", "zh-CN", "zh", "en")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 
 MIXIN_KEY = "560c52ccd288fed045859ed18bffd973"
@@ -144,11 +145,13 @@ def _cookie_source():
 def _pick(subs):
     if not subs:
         return None
-    for lang in LANGS:
-        if lang in subs:
-            return subs[lang][0]["url"]
-    for v in subs.values():
-        return v[0]["url"]
+    languages = [lang for prefix in LANGS for lang in subs if lang == prefix or lang.startswith(prefix + "-")]
+    languages += [lang for lang in subs if lang not in languages]
+    for lang in languages:
+        for ext in ("json", "json3", "vtt", "srt"):
+            for item in subs[lang]:
+                if item.get("ext") == ext and (item.get("url") or item.get("data")):
+                    return item
     return None
 
 
@@ -157,14 +160,67 @@ def _norm_lan(l):
 
 
 def _pick_bili_sub(subs):
-    normed = set(_norm_lan(s.get("lan")) for s in subs)
-    for s in subs:
-        if _norm_lan(s.get("lan")) == "en":
-            return s
     for s in subs:
         if _norm_lan(s.get("lan")) == "zh":
             return s
+    for s in subs:
+        if _norm_lan(s.get("lan")) == "en":
+            return s
     return subs[0]
+
+
+def _parse_time(value):
+    parts = value.replace(",", ".").split(":")
+    try:
+        return sum(float(part) * 60 ** power for power, part in enumerate(reversed(parts)))
+    except ValueError:
+        return None
+
+
+def _parse_cues(data):
+    segments = []
+    for block in re.split(r"\r?\n\s*\r?\n", data):
+        lines = block.strip().splitlines()
+        index = next((i for i, line in enumerate(lines) if "-->" in line), None)
+        if index is None:
+            continue
+        start, end = lines[index].split("-->", 1)
+        fr = _parse_time(start.strip())
+        to = _parse_time(end.strip().split()[0])
+        text = html.unescape(re.sub(r"<[^>]+>", "", " ".join(lines[index + 1:]))).strip()
+        if fr is not None and text and (not segments or segments[-1]["text"] != text):
+            segments.append({"from": fr, "to": to, "text": text})
+    return segments
+
+
+def _parse_json3(data):
+    segments = []
+    for event in json.loads(data).get("events", []):
+        text = "".join(seg.get("utf8", "") for seg in event.get("segs", [])).strip()
+        if text:
+            fr = float(event.get("tStartMs", 0)) / 1000
+            to = fr + float(event.get("dDurationMs", 0)) / 1000
+            segments.append({"from": fr, "to": to, "text": text})
+    return segments
+
+
+def _download_subtitle(item):
+    data = item.get("data")
+    if data is None:
+        req = urllib.request.Request(item["url"], headers=item.get("http_headers") or {"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = response.read()
+    if isinstance(data, bytes):
+        data = data.decode("utf-8-sig", "ignore")
+    ext = item.get("ext")
+    if ext in ("vtt", "srt"):
+        return _parse_cues(data)
+    if ext == "json3":
+        return _parse_json3(data)
+    if ext == "json":
+        obj = json.loads(data)
+        return _segments_from_json(obj)
+    return []
 
 
 def _download_json(url):
@@ -220,7 +276,10 @@ def _bili_segments(bvid):
 
 
 def _subtitle_segments(url):
-    obj = _download_json(url)
+    return _segments_from_json(_download_json(url))
+
+
+def _segments_from_json(obj):
     body = obj.get("body") or (obj.get("data") or {}).get("body") or []
     segs = []
     for s in body:
@@ -242,12 +301,12 @@ def _subtitle_segments(url):
 def _extract(url, opts):
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
-    sub_url = _pick(info.get("subtitles")) or _pick(info.get("automatic_captions"))
+    sub = _pick(info.get("subtitles")) or _pick(info.get("automatic_captions"))
     segs = []
     err = ""
-    if sub_url:
+    if sub:
         try:
-            segs = _subtitle_segments(sub_url)
+            segs = _download_subtitle(sub)
         except Exception as e:
             err = str(e)
     if not segs and "bilibili" in urllib.parse.urlparse(url).netloc.lower():
