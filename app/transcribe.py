@@ -1,7 +1,6 @@
 import os
 import re
 import site
-import ssl
 import time
 import urllib.request
 
@@ -61,14 +60,13 @@ def ensure_model(size="base"):
     os.makedirs(d, exist_ok=True)
     repo = TURBO_REPO if size == TURBO else f"SYSTRAN/faster-whisper-{size}"
     base = MODEL_MIRROR.format(repo=repo)
-    ctx = ssl._create_unverified_context()
     for f in MODEL_FILES + MODEL_EXTRA:
         p = os.path.join(d, f)
         if os.path.exists(p) and os.path.getsize(p) > 0:
             continue
         try:
             req = urllib.request.Request(base + f, headers={"User-Agent": "python"})
-            with urllib.request.urlopen(req, timeout=300, context=ctx) as r, open(p, "wb") as out:
+            with urllib.request.urlopen(req, timeout=300) as r, open(p, "wb") as out:
                 total = int(r.headers.get("Content-Length") or 0)
                 got = 0
                 while True:
@@ -79,9 +77,11 @@ def ensure_model(size="base"):
                     got += len(chunk)
                 if total and got < total:
                     raise urllib.error.HTTPError(url=req.full_url, code=0, msg="incomplete", hdrs=None, fp=None)
-        except urllib.error.HTTPError as e:
+        except (OSError, urllib.error.URLError) as e:
             if os.path.exists(p):
                 os.remove(p)
+            if f in MODEL_FILES or not isinstance(e, urllib.error.HTTPError) or e.code != 404:
+                raise
     return d
 
 

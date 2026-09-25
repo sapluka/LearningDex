@@ -1,5 +1,4 @@
 import json
-import ssl
 import urllib.parse
 import urllib.request
 
@@ -7,9 +6,8 @@ UA = "Mozilla/5.0"
 
 
 def _get_json(url):
-    ctx = ssl._create_unverified_context()
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=15, context=ctx) as r:
+    with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read().decode("utf-8", "ignore"))
 
 
