@@ -86,6 +86,21 @@ class Api:
             path = os.path.join(self.current_taskdir, "final.md")
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.current_doc)
+            draft = os.path.join(self.current_taskdir, "draft.md")
+            if os.path.exists(draft):
+                os.remove(draft)
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+        return {"ok": True, "path": path}
+
+    def save_draft(self, content):
+        self.update_doc(content)
+        if not self.current_taskdir:
+            return {"ok": True, "path": ""}
+        try:
+            path = os.path.join(self.current_taskdir, "draft.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.current_doc)
         except OSError as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "path": path}
@@ -237,9 +252,9 @@ class Api:
         doc = ""
         self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
         self.current_url = _source_url(self.current_taskdir, tid)
-        dp = os.path.join(self.current_taskdir, "final.md")
-        if not os.path.exists(dp):
-            dp = os.path.join(self.current_taskdir, "doc.md")
+        dp = next((os.path.join(self.current_taskdir, name) for name in
+                   ("draft.md", "final.md", "doc.md")
+                   if os.path.exists(os.path.join(self.current_taskdir, name))), "")
         if os.path.exists(dp):
             with open(dp, encoding="utf-8") as f:
                 doc = f.read()
@@ -265,10 +280,10 @@ class Api:
         if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
             return {"ok": False, "error": "非法任务标识"}
         self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
-        p = os.path.join(self.current_taskdir, "final.md")
-        if not os.path.exists(p):
-            p = os.path.join(self.current_taskdir, "doc.md")
-        if not os.path.exists(p):
+        p = next((os.path.join(self.current_taskdir, name) for name in
+                  ("draft.md", "final.md", "doc.md")
+                  if os.path.exists(os.path.join(self.current_taskdir, name))), "")
+        if not p:
             return {"ok": False, "error": "未找到该任务的文档"}
         with self._chat_lock:
             self._context_token += 1

@@ -28,9 +28,15 @@ class TestLiveDocument(unittest.TestCase):
 
             api.update_doc("# 正在编辑")
             self.assertEqual(api.current_doc, "# 正在编辑")
+            draft = api.save_draft("# 未完成草稿")
+            self.assertTrue(draft["ok"])
+            self.assertEqual((task / "draft.md").read_text(encoding="utf-8"), "# 未完成草稿")
+            api.reset_context()
+            self.assertEqual(api.load_task(task.name)["doc"], "# 未完成草稿")
             result = api.save_final("# 最终笔记\n==重点==")
             self.assertTrue(result["ok"])
             self.assertEqual((task / "final.md").read_text(encoding="utf-8"), "# 最终笔记\n==重点==")
+            self.assertFalse((task / "draft.md").exists())
 
             api.history = [{"role": "user", "content": "旧问题"}]
             api._save_history(task.name)

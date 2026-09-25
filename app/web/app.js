@@ -17,6 +17,9 @@ const chatLog = $("chatLog");
 const chatBubbles = new Map();
 let nextChatId = 0;
 let pendingQuote = "";
+let draftTimer = null;
+let draftWrite = Promise.resolve();
+let draftError = "";
 const hlLayer = $("hlLayer");
 const mathLayer = $("mathLayer");
 let currentSkills = [];
@@ -131,6 +134,7 @@ async function init() {
   $("clearQuote").onclick = clearQuote;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
   $("pdfBtn").onclick = async () => {
+    await flushDraft();
     const saved = await api.save_final(getMarkdown());
     if (!saved.ok) {
       stateEl.textContent = "保存最终笔记失败：" + saved.error;
@@ -171,6 +175,7 @@ async function init() {
   $("editor").addEventListener("scroll", scheduleHighlights);
   $("editor").addEventListener("scroll", scheduleMermaid);
   $("editor").addEventListener("input", scheduleHighlights);
+  $("editor").addEventListener("input", scheduleDraft);
   window.addEventListener("resize", scheduleHighlights);
   window.addEventListener("resize", scheduleMermaid);
   document.addEventListener("mousedown", closePops);
@@ -179,6 +184,7 @@ async function init() {
 function bind() {}
 
 async function newParse() {
+  if (!await flushDraft()) return;
   await api.reset_context();
   currentUrl = "";
   currentTaskId = "";
@@ -220,6 +226,7 @@ function renderSamples() {
 }
 
 async function openSample(sample) {
+  if (!await flushDraft()) return;
   await api.reset_context(sample.markdown);
   currentUrl = "";
   currentTaskId = "";
@@ -254,6 +261,7 @@ async function startParse() {
     return;
   }
   $("welcomeError").hidden = true;
+  if (!await flushDraft()) return;
   currentUrl = url;
   currentTaskId = "";
   chatBubbles.clear();
@@ -307,6 +315,7 @@ function showChatHint() {
 async function exportMarkdown() {
   const title = ($("docTitle").textContent || "学习笔记").replace(/[\\/:*?"<>|]/g, "_").trim();
   try {
+    await flushDraft();
     const r = await api.export_md(getMarkdown(), (title || "学习笔记") + ".md");
     if (r.ok) {
       stateEl.textContent = "Markdown 已导出：" + r.path;
@@ -319,6 +328,40 @@ async function exportMarkdown() {
     stateEl.textContent = "导出失败：" + e;
     stateEl.style.color = "red";
   }
+}
+
+function scheduleDraft() {
+  if (!currentTaskId) return;
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    draftTimer = null;
+    persistDraft();
+  }, 600);
+}
+
+function persistDraft() {
+  if (!currentTaskId) return draftWrite;
+  const content = getMarkdown();
+  draftWrite = draftWrite.then(() => api.save_draft(content)).then((result) => {
+    if (!result.ok) throw new Error(result.error);
+    draftError = "";
+  }).catch((error) => {
+    draftError = String(error);
+    stateEl.textContent = "草稿保存失败：" + error;
+    stateEl.style.color = "red";
+  });
+  return draftWrite;
+}
+
+async function flushDraft() {
+  if (draftTimer) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+    await persistDraft();
+  } else {
+    await draftWrite;
+  }
+  return !draftError;
 }
 
 async function sendChat() {
@@ -726,6 +769,7 @@ async function openTasks() {
 }
 
 async function loadTask(id) {
+  if (!await flushDraft()) return;
   const r = await api.load_task(id);
   if (!r.ok) return;
   currentUrl = r.url || "";
@@ -813,6 +857,7 @@ async function openHistory() {
 }
 
 async function loadHistory(tid) {
+  if (!await flushDraft()) return;
   const r = await api.load_history(tid);
   if (!r.ok) return;
   currentUrl = r.url || "";
