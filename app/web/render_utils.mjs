@@ -12,3 +12,10 @@ export function restoreMath(markdown) {
       formula => formula.replace(/\\([_*{}\[\]])/g, "$1"));
   }).join("");
 }
+
+export function highlightMarkdown(markdown) {
+  return markdown.split(/(^```[\s\S]*?^```)/gm).map((part, index) => {
+    if (index % 2) return part;
+    return part.replace(/==([^=\n]+)==/g, "<mark>$1</mark>");
+  }).join("");
+}

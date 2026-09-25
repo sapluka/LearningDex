@@ -608,7 +608,18 @@ body {
 .bub.ai {
   align-self: flex-start;
   background: #f1f1f4;
+  white-space: normal;
 }
+
+.bub.ai pre {
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: 6px;
+  background: #e8e8ed;
+}
+
+.bub.ai mark { background: #fff3a3; }
+.bub.ai .chat-mmd svg { max-width: 100%; height: auto; }
 
 /* ==高亮== 覆盖层 */
 .hl-layer {

@@ -4,7 +4,7 @@ import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
 import { samples } from "./samples.mjs";
-import { escapeAttribute, restoreMath, SAFE_PRINT_URI } from "./render_utils.mjs";
+import { escapeAttribute, highlightMarkdown, restoreMath, SAFE_PRINT_URI } from "./render_utils.mjs";
 
 let api = null;
 let editor = null;
@@ -425,7 +425,7 @@ function ensureChatLog() {
 function renderBubble(b) {
   const raw = b.dataset.raw || "";
   if (window.marked && window.DOMPurify) {
-    b.innerHTML = window.DOMPurify.sanitize(window.marked.parse(raw, { breaks: true, gfm: true }),
+    b.innerHTML = window.DOMPurify.sanitize(window.marked.parse(highlightMarkdown(raw), { breaks: true, gfm: true }),
       { USE_PROFILES: { html: true } });
   } else {
     b.textContent = raw;
@@ -447,7 +447,10 @@ function docChatPush(kind, text) {
   const b = el("div", "bub " + (kind === "user" ? "user" : "ai"));
   b.dataset.raw = text || "";
   if (kind === "user") b.textContent = text || "";
-  else renderBubble(b);
+  else {
+    renderBubble(b);
+    if (text) renderMessageMermaid(b);
+  }
   chatLog.appendChild(b);
   chatLog.scrollTop = chatLog.scrollHeight;
   return b;
@@ -462,7 +465,10 @@ window.__chatChunk = (id, t) => {
 };
 window.__chatDone = (id) => {
   const bubble = chatBubbles.get(id);
-  if (bubble) renderBubble(bubble);
+  if (bubble) {
+    renderBubble(bubble);
+    renderMessageMermaid(bubble);
+  }
   chatBubbles.delete(id);
 };
 
@@ -501,6 +507,23 @@ async function ensureMermaid() {
     mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict" });
   }
   return mermaidLib;
+}
+
+async function renderMessageMermaid(bubble) {
+  const blocks = [...bubble.querySelectorAll("pre code.language-mermaid")];
+  if (!blocks.length) return;
+  let lib;
+  try { lib = await ensureMermaid(); } catch (e) { return; }
+  for (const [index, block] of blocks.entries()) {
+    try {
+      const svg = (await lib.render("chat_mmd_" + Date.now() + "_" + index, block.textContent)).svg;
+      const diagram = document.createElement("div");
+      diagram.className = "chat-mmd";
+      diagram.innerHTML = window.DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
+      block.closest("pre").replaceWith(diagram);
+    } catch (e) { /* preserve source on invalid diagram */ }
+  }
+  chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 async function renderMermaids() {
@@ -552,7 +575,7 @@ async function buildPrintDoc() {
   const root = $("printRoot");
   let md = mdForDisplay(getMarkdown());
   md = md.replace(/\\==/g, "==");
-  md = md.replace(/==([^=\n]+)==/g, "<mark>$1</mark>");
+  md = highlightMarkdown(md);
   if (!window.marked || !window.DOMPurify) {
     root.textContent = md;
     return;
