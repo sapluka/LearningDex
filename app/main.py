@@ -3,6 +3,7 @@ import json
 import os
 import re
 import threading
+import uuid
 
 import webview
 
@@ -58,15 +59,19 @@ class Api:
         self.current_doc = None
         self.current_url = ""
         self.current_taskdir = ""
+        self._context_token = 0
+        self._chat_lock = threading.Lock()
 
     def load_config(self):
         return self.cfg
 
     def reset_context(self, doc=""):
-        self.history = []
-        self.current_doc = doc
-        self.current_url = ""
-        self.current_taskdir = ""
+        with self._chat_lock:
+            self._context_token += 1
+            self.history = []
+            self.current_doc = doc
+            self.current_url = ""
+            self.current_taskdir = ""
         return {"ok": True}
 
     def update_doc(self, content):
@@ -105,9 +110,11 @@ class Api:
         except Exception:
             pass
 
-    def chat(self, message):
-        threading.Thread(target=self._chat_worker, args=(message,), daemon=True).start()
-        return {"ok": True}
+    def chat(self, message, request_id=None):
+        request_id = request_id or uuid.uuid4().hex
+        stream = agents.chat_stream(dict(self.cfg), list(self.history), message, self.current_doc)
+        self._start_stream(request_id, message, stream)
+        return {"ok": True, "id": request_id}
 
     def _emit_js(self, js):
         try:
@@ -116,35 +123,39 @@ class Api:
         except Exception:
             pass
 
-    def _chat_worker(self, message):
+    def _start_stream(self, request_id, user_text, stream):
+        threading.Thread(target=self._stream_worker,
+                         args=(request_id, user_text, stream, self._context_token, self.current_taskdir),
+                         daemon=True).start()
+
+    def _stream_worker(self, request_id, user_text, stream, token, taskdir):
         buf = []
         try:
-            for chunk in agents.chat_stream(self.cfg, self.history, message, self.current_doc):
+            for chunk in stream:
+                if token != self._context_token:
+                    break
                 buf.append(chunk)
-                self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
-                              % json.dumps(chunk, ensure_ascii=False))
+                self._emit_js("window.__chatChunk && window.__chatChunk(%s,%s)" % (
+                    json.dumps(request_id), json.dumps(chunk, ensure_ascii=False)))
         except Exception as e:
-            self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
-                          % json.dumps("\n[错误] " + str(e), ensure_ascii=False))
-        self.history.append({"role": "user", "content": message})
-        self.history.append({"role": "assistant", "content": "".join(buf)})
-        if self.current_taskdir:
-            self._save_history(os.path.basename(self.current_taskdir))
-        self._emit_js("window.__chatDone && window.__chatDone()")
+            error = "\n[错误] " + str(e)
+            buf.append(error)
+            self._emit_js("window.__chatChunk && window.__chatChunk(%s,%s)" % (
+                json.dumps(request_id), json.dumps(error, ensure_ascii=False)))
+        with self._chat_lock:
+            if token == self._context_token:
+                self.history.append({"role": "user", "content": user_text})
+                self.history.append({"role": "assistant", "content": "".join(buf)})
+                if taskdir:
+                    self._save_history(os.path.basename(taskdir))
+        self._emit_js("window.__chatDone && window.__chatDone(%s)" % json.dumps(request_id))
 
-    def ask_selection(self, selection, question):
-        threading.Thread(target=self._ask_worker, args=(selection, question), daemon=True).start()
-        return {"ok": True}
-
-    def _ask_worker(self, selection, question):
-        try:
-            for chunk in agents.answer_selection_stream(self.cfg, selection, question, self.current_doc):
-                self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
-                              % json.dumps(chunk, ensure_ascii=False))
-        except Exception as e:
-            self._emit_js("window.__chatChunk && window.__chatChunk(%s)"
-                          % json.dumps("\n[错误] " + str(e), ensure_ascii=False))
-        self._emit_js("window.__chatDone && window.__chatDone()")
+    def ask_selection(self, selection, question, request_id=None):
+        request_id = request_id or uuid.uuid4().hex
+        stream = agents.answer_selection_stream(dict(self.cfg), selection, question, self.current_doc)
+        user_text = "引用：" + selection + ("\n问题：" + question if question else "\n请解释这段内容")
+        self._start_stream(request_id, user_text, stream)
+        return {"ok": True, "id": request_id}
 
     def _fav_path(self):
         return os.path.join(_state_dir(self.cfg), "favorites.json")
@@ -211,6 +222,8 @@ class Api:
     def load_history(self, tid):
         if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
             return {"ok": False, "error": "非法任务标识"}
+        with self._chat_lock:
+            self._context_token += 1
         self.history = self._load_history(tid)
         self.current_doc = None
         doc = ""
@@ -249,6 +262,8 @@ class Api:
             p = os.path.join(self.current_taskdir, "doc.md")
         if not os.path.exists(p):
             return {"ok": False, "error": "未找到该任务的文档"}
+        with self._chat_lock:
+            self._context_token += 1
         with open(p, encoding="utf-8") as f:
             doc = f.read()
         self.current_doc = doc
@@ -297,6 +312,8 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     def generate_doc(self, url):
+        with self._chat_lock:
+            self._context_token += 1
         self.current_url = url
         self.current_taskdir = ""
         self._emit("正在提取视频字幕")

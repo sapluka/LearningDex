@@ -13,6 +13,8 @@ let currentTaskId = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const chatLog = $("chatLog");
+const chatBubbles = new Map();
+let nextChatId = 0;
 const hlLayer = $("hlLayer");
 let currentSkills = [];
 let imgDir = "";
@@ -174,6 +176,7 @@ async function newParse() {
   await api.reset_context();
   currentUrl = "";
   currentTaskId = "";
+  chatBubbles.clear();
   imgDir = "";
   $("workspace").hidden = true;
   $("welcome").hidden = false;
@@ -210,6 +213,7 @@ async function openSample(sample) {
   await api.reset_context(sample.markdown);
   currentUrl = "";
   currentTaskId = "";
+  chatBubbles.clear();
   imgDir = "";
   $("welcome").hidden = true;
   $("workspace").hidden = false;
@@ -234,6 +238,7 @@ async function startParse() {
   if (!url) { stateEl.textContent = "请先粘贴视频链接"; return; }
   currentUrl = url;
   currentTaskId = "";
+  chatBubbles.clear();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   stateEl.textContent = "处理中：字幕提取 → 转写 → 核验 → 生成文档…";
@@ -267,6 +272,7 @@ async function startParse() {
 }
 
 function showChatHint() {
+  chatBubbles.clear();
   chatLog.style.display = "flex";
   chatLog.innerHTML = "";
   const h = el("div", "chat-empty");
@@ -295,14 +301,21 @@ async function sendChat() {
   const q = $("chatInput").value.trim();
   if (!q) return;
   $("chatInput").value = "";
-  docChatPush("user", q);
-  docChatPush("ai", "");
+  const id = beginReply(q);
   try {
     if (!$("workspace").hidden) await api.update_doc(getMarkdown());
-    await api.chat(q);
+    await api.chat(q, id);
   } catch (e) {
-    docChatPush("ai", "异常：" + e);
+    window.__chatChunk(id, "异常：" + e);
+    window.__chatDone(id);
   }
+}
+
+function beginReply(userText) {
+  const id = ++nextChatId;
+  docChatPush("user", userText);
+  chatBubbles.set(id, docChatPush("ai", ""));
+  return id;
 }
 
 function ensureChatLog() {
@@ -344,17 +357,17 @@ function docChatPush(kind, text) {
   return b;
 }
 
-window.__chatChunk = (t) => {
-  ensureChatLog();
-  let last = chatLog.lastElementChild;
-  if (!last || !last.classList.contains("ai")) last = docChatPush("ai", "");
-  last.dataset.raw = (last.dataset.raw || "") + t;
-  last.textContent = last.dataset.raw;
+window.__chatChunk = (id, t) => {
+  const bubble = chatBubbles.get(id);
+  if (!bubble) return;
+  bubble.dataset.raw = (bubble.dataset.raw || "") + t;
+  renderBubble(bubble);
   chatLog.scrollTop = chatLog.scrollHeight;
 };
-window.__chatDone = () => {
-  const last = chatLog.lastElementChild;
-  if (last && last.classList.contains("ai")) renderBubble(last);
+window.__chatDone = (id) => {
+  const bubble = chatBubbles.get(id);
+  if (bubble) renderBubble(bubble);
+  chatBubbles.delete(id);
 };
 
 let hlScheduled = false;
@@ -550,13 +563,13 @@ function onDocDblClick(e) {
 }
 
 async function askSelection(selection, question) {
-  docChatPush("user", "引用：" + selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
-  docChatPush("ai", "");
+  const id = beginReply("引用：" + selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
   try {
     await api.update_doc(getMarkdown());
-    await api.ask_selection(selection, question);
+    await api.ask_selection(selection, question, id);
   } catch (e) {
-    docChatPush("ai", "异常：" + e);
+    window.__chatChunk(id, "异常：" + e);
+    window.__chatDone(id);
   }
 }
 
@@ -661,6 +674,7 @@ async function loadTask(id) {
 }
 
 function showConversation(hist) {
+  chatBubbles.clear();
   chatLog.innerHTML = "";
   if (hist.length) {
     ensureChatLog();
