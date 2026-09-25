@@ -289,7 +289,7 @@ async function startParse() {
       return;
     }
     const info = r.info || {};
-    $("docTitle").textContent = info.title || "学习文档";
+    $("docTitle").textContent = r.title || info.title || "学习文档";
     $("meta").textContent =
       `${info.uploader || ""} ${info.duration ? Math.round(info.duration / 60) + "分钟" : ""}` +
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;

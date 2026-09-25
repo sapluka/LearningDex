@@ -72,6 +72,19 @@ def summarize(cfg, info, screenshots=False):
     return llm.text(cfg, msgs)
 
 
+def suggest_title(cfg, info, doc):
+    """为已完成的学习文档拟一个任务标题。"""
+    msgs = [
+        {"role": "system", "content": "根据学习文档拟一个准确、简短的中文任务标题，突出具体主题。不要照搬视频编号、泛称或口语化标题。只输出标题，不加引号、序号或解释。"},
+        {"role": "user", "content": f"视频原标题：{info.get('title') or ''}\n\n学习文档：\n{(doc or '')[:12000]}"},
+    ]
+    title = (llm.text(cfg, msgs, max_tokens=80) or "").strip()
+    title = title.splitlines()[0].strip().strip("#*《》“”\"' ")
+    if not title or len(title) > 50:
+        raise ValueError("生成的任务标题无效")
+    return title
+
+
 def proofread(cfg, text):
     msgs = [
         {"role": "system", "content": PROOF_SYSTEM},

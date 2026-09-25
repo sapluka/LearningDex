@@ -44,6 +44,31 @@ def _source_url(taskdir, tid):
     return "https://www.bilibili.com/video/" + tid if tid.startswith("BV") else ""
 
 
+def _task_title(taskdir, tid):
+    source = _source_info(taskdir)
+    if source.get("task_title"):
+        return source["task_title"]
+    if source.get("title"):
+        return source["title"]
+    for name in ("final.md", "draft.md", "doc.md"):
+        path = os.path.join(taskdir, name)
+        try:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    match = re.match(r"^#\s+(.+?)\s*$", line)
+                    if match:
+                        heading = match.group(1).strip("# ")
+                        wrapped = re.match(r"^《(.+?)》学习文档$", heading)
+                        if wrapped:
+                            return wrapped.group(1)
+                        if heading and not any(x in heading for x in ("这一讲到底", "学习文档", "测试笔记")):
+                            return heading
+                        break
+        except OSError:
+            pass
+    return tid
+
+
 def _save_output(url, info, doc, cfg=None):
     folder = os.path.join(_state_dir(cfg), _task_id(url))
     os.makedirs(folder, exist_ok=True)
@@ -54,7 +79,8 @@ def _save_output(url, info, doc, cfg=None):
     with open(doc_path, "w", encoding="utf-8") as f:
         f.write(doc or "")
     with open(os.path.join(folder, "source.json"), "w", encoding="utf-8") as f:
-        json.dump({"url": url, "title": info.get("title") or ""}, f, ensure_ascii=False)
+        json.dump({"url": url, "title": info.get("title") or "",
+                   "task_title": info.get("task_title") or ""}, f, ensure_ascii=False)
     return {"subtitle": sub_path, "doc": doc_path}
 
 
@@ -193,7 +219,12 @@ class Api:
             return []
 
     def list_favorites(self):
-        return {"ok": True, "favorites": self._load_fav()}
+        favorites = self._load_fav()
+        for item in favorites:
+            tid = item.get("id", "")
+            if re.fullmatch(r"[A-Za-z0-9_\-]+", tid):
+                item["title"] = _task_title(os.path.join(_state_dir(self.cfg), tid), tid)
+        return {"ok": True, "favorites": favorites}
 
     def toggle_favorite(self, tid, title=""):
         if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
@@ -236,7 +267,7 @@ class Api:
                 p = os.path.join(d, name, "chat.json")
                 if os.path.exists(p):
                     try:
-                        out.append({"id": name, "title": _source_info(os.path.join(d, name)).get("title") or name,
+                        out.append({"id": name, "title": _task_title(os.path.join(d, name), name),
                                     "count": len(self._load_history(name)),
                                     "mtime": os.path.getmtime(p)})
                     except OSError:
@@ -266,7 +297,7 @@ class Api:
             with open(dp, encoding="utf-8") as f:
                 doc = f.read()
             self.current_doc = doc
-        return {"ok": True, "id": tid, "title": _source_info(self.current_taskdir).get("title") or tid,
+        return {"ok": True, "id": tid, "title": _task_title(self.current_taskdir, tid),
                 "url": self.current_url, "history": self.history, "doc": doc,
                 "taskdir": self.current_taskdir}
 
@@ -279,7 +310,7 @@ class Api:
                 if os.path.isdir(p) and os.path.exists(os.path.join(p, "doc.md")):
                     out.append({
                         "id": name,
-                        "title": _source_info(p).get("title") or name,
+                        "title": _task_title(p, name),
                         "has_doc": os.path.exists(os.path.join(p, "doc.md")),
                         "mtime": os.path.getmtime(p),
                     })
@@ -305,7 +336,7 @@ class Api:
             self.current_doc = doc
             self.current_url = _source_url(taskdir, tid)
             self.history = self._load_history(tid)
-        return {"ok": True, "doc": doc, "id": tid, "title": _source_info(self.current_taskdir).get("title") or tid,
+        return {"ok": True, "doc": doc, "id": tid, "title": _task_title(self.current_taskdir, tid),
                 "url": self.current_url,
                 "taskdir": self.current_taskdir, "history": self.history}
 
@@ -413,12 +444,17 @@ class Api:
             except Exception as e:
                 doc = shoot.SHOT_RE.sub("", doc)
                 note = f"截图处理失败：{e}"
+        self._emit("正在拟定任务标题")
+        try:
+            info["task_title"] = agents.suggest_title(self.cfg, info, doc)
+        except Exception:
+            info["task_title"] = (info.get("title") or "").strip()
         saved = _save_output(url, info, doc, self.cfg)
         self.current_taskdir = os.path.dirname(saved["doc"])
         self.current_doc = doc
         self.history = []
         self._save_history(tid)
-        return {"ok": True, "doc": doc, "info": info, "note": note, "saved": saved,
+        return {"ok": True, "doc": doc, "info": info, "title": _task_title(self.current_taskdir, tid), "note": note, "saved": saved,
                 "taskdir": self.current_taskdir, "id": tid}
 
 

@@ -1,8 +1,10 @@
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from app import main
+from app import agents
 
 
 class TestVideoTasks(unittest.TestCase):
@@ -26,6 +28,43 @@ class TestVideoTasks(unittest.TestCase):
 
     def test_bilibili_folder_keeps_bv_id(self):
         self.assertEqual(main._task_id("https://www.bilibili.com/video/BV1X7411F744"), "BV1X7411F744")
+
+    def test_agent_title_is_saved_and_used_in_task_views(self):
+        with tempfile.TemporaryDirectory() as root:
+            cfg = {"output_dir": root}
+            url = "https://www.bilibili.com/video/BV1TITLE"
+            info = {"subtitle": "纹理映射", "title": "视频原标题", "task_title": "纹理映射与采样"}
+            main._save_output(url, info, "# 章节", cfg)
+            api = main.Api()
+            api.cfg = cfg
+            self.assertEqual(api.list_tasks()["tasks"][0]["title"], "纹理映射与采样")
+            self.assertEqual(api.load_task("BV1TITLE")["title"], "纹理映射与采样")
+            api.toggle_favorite("BV1TITLE", "旧收藏名")
+            self.assertEqual(api.list_favorites()["favorites"][0]["title"], "纹理映射与采样")
+
+    def test_legacy_title_from_document(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / "BV1OLD"
+            folder.mkdir()
+            (folder / "doc.md").write_text("# 《游戏架构》学习文档\n", encoding="utf-8")
+            self.assertEqual(main._task_title(str(folder), "BV1OLD"), "游戏架构")
+
+    def test_agent_title_cleanup(self):
+        with mock.patch.object(agents.llm, "text", return_value="# 纹理映射与采样\n说明"):
+            self.assertEqual(agents.suggest_title({}, {}, "# 文档"), "纹理映射与采样")
+
+    def test_generate_doc_requests_title_after_document(self):
+        with tempfile.TemporaryDirectory() as root:
+            api = main.Api()
+            api.cfg = {"output_dir": root, "screenshots": False}
+            info = {"subtitle": "纹理", "title": "原视频", "segments": []}
+            with mock.patch.object(main.subtitle, "extract", return_value=info), \
+                 mock.patch.object(main.agents, "summarize", return_value="# 学习内容"), \
+                 mock.patch.object(main.agents, "suggest_title", return_value="纹理映射与采样") as title:
+                result = api.generate_doc("https://www.bilibili.com/video/BV1TITLE")
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["title"], "纹理映射与采样")
+            title.assert_called_once()
 
 
 if __name__ == "__main__":
