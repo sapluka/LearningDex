@@ -4,7 +4,7 @@ import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
 import { samples } from "./samples.mjs";
-import { escapeAttribute, highlightMarkdown, restoreMath } from "./render_utils.mjs";
+import { highlightMarkdown, inlineImages, restoreMath } from "./render_utils.mjs";
 import { createDocumentView } from "./document_view.mjs";
 
 let api = null;
@@ -31,8 +31,7 @@ window.__setStatus = (t) => {
 };
 
 function setMarkdown(md) {
-  md = (md || "").replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,
-    (_, alt, src) => '<img src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(alt) + '">');
+  md = inlineImages(md);
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const parser = ctx.get(parserCtx);

@@ -3,6 +3,13 @@ export function escapeAttribute(value) {
     .replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+export function inlineImages(markdown) {
+  return (markdown || "").replace(/!\[([^\]]*)\]\((<[^>]+>|[^)\n]+)\)/g, (_, alt, source) => {
+    const src = source.startsWith("<") ? source.slice(1, -1) : source.trim();
+    return '<img src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(alt) + '">';
+  });
+}
+
 export const SAFE_PRINT_URI = /^(?:(?:https?|mailto|file):|\/|\.\.?\/|[^:/?#][^:]*$)/i;
 
 export function restoreMath(markdown) {
