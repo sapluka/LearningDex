@@ -1,8 +1,8 @@
-import { Editor, rootCtx, editorViewCtx, parserCtx, serializerCtx } from "https://esm.sh/@milkdown/core@7.22.1";
-import { commonmark } from "https://esm.sh/@milkdown/preset-commonmark@7.22.1";
-import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
-import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
-import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
+import { Editor, rootCtx, editorViewCtx, parserCtx, serializerCtx } from "@milkdown/core";
+import { commonmark } from "@milkdown/preset-commonmark";
+import { gfm } from "@milkdown/preset-gfm";
+import { nord } from "@milkdown/theme-nord";
+import { history } from "@milkdown/plugin-history";
 import { samples } from "./samples.mjs";
 import { highlightMarkdown, inlineImages, restoreMath } from "./render_utils.mjs";
 import { createDocumentView } from "./document_view.mjs";
@@ -730,4 +730,19 @@ async function testConnection() {
   $("setMsg").textContent = r.ok ? "连接成功：" + r.reply : "失败：" + r.error;
 }
 
-window.addEventListener("pywebviewready", init);
+let initializationStarted = false;
+function startWhenReady() {
+  if (initializationStarted || typeof window.pywebview?.api?.load_config !== "function") return;
+  initializationStarted = true;
+  init().catch((error) => {
+    const message = "界面初始化失败：" + (error?.message || String(error));
+    $("welcomeError").textContent = message;
+    $("welcomeError").hidden = false;
+    stateEl.textContent = message;
+    stateEl.style.color = "red";
+    window.__err = message;
+  });
+}
+
+window.addEventListener("pywebviewready", startWhenReady);
+startWhenReady();

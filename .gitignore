@@ -16,6 +16,7 @@ __pycache__/
 *.pyo
 .venv/
 env/
+app/web/node_modules/
 
 # 其它
 .DS_Store

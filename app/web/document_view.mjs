@@ -36,7 +36,7 @@ const mmdLayer = $("mmdLayer");
 const mmdCache = {};
 async function ensureMermaid() {
   if (!mermaidLib) {
-    const m = await import("https://esm.sh/mermaid@10");
+    const m = await import("mermaid");
     mermaidLib = m.default || m;
     mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict" });
   }

@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@milkdown/core": "7.22.1",
+    "@milkdown/plugin-history": "7.22.1",
+    "@milkdown/preset-commonmark": "7.22.1",
+    "@milkdown/preset-gfm": "7.22.1",
+    "@milkdown/theme-nord": "7.22.1",
+    "dompurify": "3.4.16",
+    "katex": "0.16.9",
+    "marked": "12.0.2",
+    "mermaid": "10.9.5"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.9"
+  }
+}
