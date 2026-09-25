@@ -120,6 +120,7 @@ async function init() {
   $("chatSendBtn").onclick = sendChat;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
   $("pdfBtn").onclick = async () => { await buildPrintDoc(); window.print(); };
+  $("exportMdBtn").onclick = exportMarkdown;
   $("githubBtn").onclick = () => openLink("https://github.com");
   $("settingsBtn").onclick = () => ($("settings").hidden = false);
   $("closeSettings").onclick = () => ($("settings").hidden = true);
@@ -217,6 +218,23 @@ function showChatHint() {
   const h = el("div", "chat-empty");
   h.textContent = "学习文档已生成，可以开始提问了。";
   chatLog.appendChild(h);
+}
+
+async function exportMarkdown() {
+  const title = ($("docTitle").textContent || "学习笔记").replace(/[\\/:*?"<>|]/g, "_").trim();
+  try {
+    const r = await api.export_md(getMarkdown(), (title || "学习笔记") + ".md");
+    if (r.ok) {
+      stateEl.textContent = "Markdown 已导出：" + r.path;
+      stateEl.style.color = "green";
+    } else if (r.error !== "已取消") {
+      stateEl.textContent = "导出失败：" + r.error;
+      stateEl.style.color = "red";
+    }
+  } catch (e) {
+    stateEl.textContent = "导出失败：" + e;
+    stateEl.style.color = "red";
+  }
 }
 
 async function sendChat() {

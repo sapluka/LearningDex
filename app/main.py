@@ -5,7 +5,7 @@ import threading
 
 import webview
 
-from . import agents, config, llm, search, shoot, skills, subtitle, transcribe
+from . import agents, config, llm, markdown_io, search, shoot, skills, subtitle, transcribe
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -235,8 +235,12 @@ class Api:
             return {"ok": False, "error": "已取消"}
         if isinstance(path, (list, tuple)):
             path = path[0]
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(_normalize_md(content))
+        try:
+            match = re.search(r"BV[0-9A-Za-z]+", self.current_url)
+            taskdir = os.path.join(_state_dir(self.cfg), match.group(0) if match else "video") if self.current_url else ""
+            markdown_io.export_markdown(content, path, taskdir)
+        except (OSError, ValueError) as e:
+            return {"ok": False, "error": str(e)}
         return {"ok": True, "path": path}
 
     def extract(self, url):
