@@ -273,6 +273,39 @@ body {
 .doc-title {
   font-size: 18px;
   font-weight: 600;
+  font-family: inherit;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  padding: 2px 8px;
+  border-radius: 6px;
+  max-width: calc(100% - 72px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-title:not(:disabled) {
+  cursor: text;
+}
+
+.doc-title:not(:disabled):hover {
+  background: #f0f2ff;
+}
+
+.doc-title:not(:disabled):hover::after {
+  content: " ✎";
+  color: #6979bd;
+}
+
+.doc-title-edit {
+  width: min(440px, calc(100% - 72px));
+  border: 1px solid #4f6ef7;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: 600 18px "Segoe UI", "Microsoft YaHei", sans-serif;
+  text-align: center;
+  outline: none;
 }
 
 .star {

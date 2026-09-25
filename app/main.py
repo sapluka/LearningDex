@@ -3,6 +3,7 @@ import json
 import os
 import re
 import shutil
+import tempfile
 import threading
 import uuid
 
@@ -363,6 +364,36 @@ class Api:
         return {"ok": True, "doc": doc, "id": tid, "title": _task_title(self.current_taskdir, tid),
                 "url": self.current_url,
                 "taskdir": self.current_taskdir, "history": self.history}
+
+    def rename_task(self, tid, title):
+        if not re.fullmatch(r"[A-Za-z0-9_\-]+", tid or ""):
+            return {"ok": False, "error": "非法任务标识"}
+        if not isinstance(title, str):
+            return {"ok": False, "error": "标题不能为空"}
+        title = title.strip()
+        if not title or len(title) > 50 or any(ord(char) < 32 for char in title):
+            return {"ok": False, "error": "标题须为 1–50 个字符且不能包含换行"}
+        base = os.path.realpath(_state_dir(self.cfg))
+        taskdir = os.path.join(base, tid)
+        target = os.path.realpath(taskdir)
+        if os.path.commonpath((base, target)) != base or os.path.islink(taskdir):
+            return {"ok": False, "error": "非法任务路径"}
+        if not os.path.isfile(os.path.join(target, "doc.md")):
+            return {"ok": False, "error": "未找到该任务"}
+        source = _source_info(target)
+        source["task_title"] = title
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=target,
+                                             prefix=".source-", suffix=".json", delete=False) as file:
+                temporary = file.name
+                json.dump(source, file, ensure_ascii=False, indent=2)
+            os.replace(temporary, os.path.join(target, "source.json"))
+        except OSError as error:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
+            return {"ok": False, "error": str(error)}
+        return {"ok": True, "title": title}
 
     def delete_task(self, tid):
         if not re.fullmatch(r"[A-Za-z0-9_\-]+", tid or ""):

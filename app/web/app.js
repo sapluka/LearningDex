@@ -198,6 +198,12 @@ async function init() {
   $("favBtn").onclick = openFavorites;
   $("favsClose").onclick = () => ($("favsModal").hidden = true);
   $("favDocBtn").onclick = toggleCurrentFav;
+  $("docTitle").onclick = beginTitleEdit;
+  $("titleInput").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); finishTitleEdit(true); }
+    if (event.key === "Escape") { event.preventDefault(); finishTitleEdit(false); }
+  });
+  $("titleInput").addEventListener("blur", () => finishTitleEdit(true));
   $("newParseBtn").onclick = newParse;
   $("historyBtn").onclick = openHistory;
   $("histClose").onclick = () => ($("histModal").hidden = true);
@@ -226,6 +232,7 @@ async function newParse() {
   await api.reset_context();
   currentUrl = "";
   currentTaskId = "";
+  showTitle("学习文档");
   chatBubbles.clear();
   documentView.setImageDir("");
   $("workspace").hidden = true;
@@ -270,7 +277,7 @@ async function openSample(sample) {
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
-  $("docTitle").textContent = sample.title;
+  showTitle(sample.title);
   $("meta").textContent = "内置演示 · 可编辑、提问、导出";
   stateEl.textContent = "示例文档";
   stateEl.style.color = "#666";
@@ -286,6 +293,46 @@ function openLink(url) {
   if (window.open) window.open(url, "_blank");
 }
 
+function showTitle(title) {
+  $("titleInput").hidden = true;
+  $("docTitle").hidden = false;
+  $("docTitle").textContent = title;
+  $("docTitle").disabled = !currentTaskId;
+}
+
+function beginTitleEdit() {
+  if (!currentTaskId) return;
+  const input = $("titleInput");
+  input.value = $("docTitle").textContent;
+  $("docTitle").hidden = true;
+  input.hidden = false;
+  input.focus();
+  input.select();
+}
+
+async function finishTitleEdit(save) {
+  const input = $("titleInput");
+  if (input.hidden) return;
+  const title = input.value.trim();
+  const taskId = currentTaskId;
+  input.hidden = true;
+  $("docTitle").hidden = false;
+  if (!save || title === $("docTitle").textContent) return;
+  if (!title) {
+    stateEl.textContent = "标题不能为空";
+    stateEl.style.color = "red";
+    return;
+  }
+  try {
+    const result = await api.rename_task(taskId, title);
+    if (!result.ok) throw new Error(result.error || "保存失败");
+    if (currentTaskId === taskId) showTitle(result.title || title);
+  } catch (error) {
+    stateEl.textContent = "修改标题失败：" + error.message;
+    stateEl.style.color = "red";
+  }
+}
+
 async function startParse() {
   const url = $("url").value.trim();
   if (!url) {
@@ -297,6 +344,7 @@ async function startParse() {
   if (!await flushDraft()) return;
   currentUrl = url;
   currentTaskId = "";
+  showTitle("学习文档");
   chatBubbles.clear();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
@@ -314,12 +362,12 @@ async function startParse() {
       return;
     }
     const info = r.info || {};
-    $("docTitle").textContent = r.title || info.title || "学习文档";
     $("meta").textContent =
       `${info.uploader || ""} ${info.duration ? Math.round(info.duration / 60) + "分钟" : ""}` +
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     documentView.setImageDir(r.taskdir || "");
     currentTaskId = r.id || "";
+    showTitle(r.title || info.title || "学习文档");
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
     setTimeout(fixImages, 400);
@@ -599,7 +647,7 @@ async function loadTask(id) {
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
-  $("docTitle").textContent = r.title || id;
+  showTitle(r.title || id);
   $("meta").textContent = "已打开保存的学习文档";
   documentView.setImageDir(r.taskdir || "");
   setMarkdown(mdForDisplay(r.doc));
@@ -687,7 +735,7 @@ async function loadHistory(tid) {
     $("welcome").hidden = true;
     $("workspace").hidden = false;
     processingEl.hidden = true;
-    $("docTitle").textContent = r.title || tid;
+    showTitle(r.title || tid);
     $("meta").textContent = "已打开保存的学习文档";
     documentView.setImageDir(r.taskdir || "");
     setMarkdown(mdForDisplay(r.doc));

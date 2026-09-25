@@ -42,6 +42,36 @@ class TestVideoTasks(unittest.TestCase):
             api.toggle_favorite("BV1TITLE", "旧收藏名")
             self.assertEqual(api.list_favorites()["favorites"][0]["title"], "纹理映射与采样")
 
+    def test_renamed_title_persists_across_task_views(self):
+        with tempfile.TemporaryDirectory() as root:
+            cfg = {"output_dir": root}
+            main._save_output("https://www.bilibili.com/video/BV1TITLE",
+                              {"subtitle": "纹理", "title": "视频原标题"}, "# 文档", cfg)
+            api = main.Api()
+            api.cfg = cfg
+            api.toggle_favorite("BV1TITLE", "旧名称")
+            self.assertEqual(api.rename_task("BV1TITLE", "纹理映射与采样"),
+                             {"ok": True, "title": "纹理映射与采样"})
+            self.assertEqual(api.load_task("BV1TITLE")["title"], "纹理映射与采样")
+            self.assertEqual(api.list_tasks()["tasks"][0]["title"], "纹理映射与采样")
+            self.assertEqual(api.list_favorites()["favorites"][0]["title"], "纹理映射与采样")
+            api.history = [{"role": "user", "content": "你好"}]
+            api._save_history("BV1TITLE")
+            self.assertEqual(api.list_histories()["histories"][0]["title"], "纹理映射与采样")
+            self.assertEqual(main._source_info(str(Path(root) / "BV1TITLE"))["title"], "视频原标题")
+
+    def test_rename_rejects_missing_or_invalid_task_and_title(self):
+        with tempfile.TemporaryDirectory() as root:
+            api = main.Api()
+            api.cfg = {"output_dir": root}
+            main._save_output("https://www.bilibili.com/video/BV1TITLE",
+                              {"subtitle": "纹理", "title": "原名"}, "# 文档", api.cfg)
+            for tid, title in (("../other", "新名"), ("BV1MISSING", "新名"),
+                               ("BV1TITLE", ""), ("BV1TITLE", "有\n换行"),
+                               ("BV1TITLE", "字" * 51)):
+                self.assertFalse(api.rename_task(tid, title)["ok"])
+            self.assertEqual(api.load_task("BV1TITLE")["title"], "原名")
+
     def test_legacy_title_from_document(self):
         with tempfile.TemporaryDirectory() as root:
             folder = Path(root) / "BV1OLD"
