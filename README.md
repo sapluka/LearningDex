@@ -2,6 +2,10 @@
 
 视频学习辅助 Agent（编辑器 + Agent 一体化）：输入视频链接，自动提取字幕或本地转写，由 Agent 生成可编辑的 Markdown 学习文档，支持对话提问、联网查词、导出笔记。
 
+## 运行
+
+使用 Python 3.9 及以上版本，安装 `requirements.txt` 后运行 `python -m app.main`。首次转写会下载本地模型；前端编辑器需要联网加载其 JavaScript 依赖。
+
 ## 文档
 
 - `REQUIREMENTS.md` — 总需求
@@ -23,4 +27,3 @@ app/            后端与前端源码
 tests/          单元测试
 skills/         可插拔 skill
 ```
-
