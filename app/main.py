@@ -50,7 +50,7 @@ def _task_title(taskdir, tid):
         return source["task_title"]
     if source.get("title"):
         return source["title"]
-    for name in ("final.md", "draft.md", "doc.md"):
+    for name in ("draft.md", "final.md", "doc.md"):
         path = os.path.join(taskdir, name)
         try:
             with open(path, encoding="utf-8") as f:

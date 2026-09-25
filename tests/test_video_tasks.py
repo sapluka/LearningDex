@@ -48,6 +48,8 @@ class TestVideoTasks(unittest.TestCase):
             folder.mkdir()
             (folder / "doc.md").write_text("# 《游戏架构》学习文档\n", encoding="utf-8")
             self.assertEqual(main._task_title(str(folder), "BV1OLD"), "游戏架构")
+            (folder / "draft.md").write_text("# 编辑后的标题\n", encoding="utf-8")
+            self.assertEqual(main._task_title(str(folder), "BV1OLD"), "编辑后的标题")
 
     def test_agent_title_cleanup(self):
         with mock.patch.object(agents.llm, "text", return_value="# 纹理映射与采样\n说明"):
