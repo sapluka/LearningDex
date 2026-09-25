@@ -39,7 +39,7 @@
 - API key、B站 SESSDATA、cookies.txt 等个人信息**不硬编码进软件**，由独立黑箱（personal.py / 外部文件）持有，运行时动态注入。
 - 优先级：cookies 文件 > cookies 内容 > SESSDATA > 匿名 buvid。
 
-## 4.2 带图笔记（截图 + 推导图，规划中）
+## 4.2 带图笔记（截图 + 推导图）
 
 **意图（intent）**：把图放入学习笔记，方便用户理解该视频以及笔记内容。
 
@@ -52,7 +52,7 @@
 
 **生成PDF**：采用 A 方案——将编辑区渲染结果**打印为 PDF**（所见即所得）。打印视图须**包含截图与推导图**（推导图在打印视图内联渲染为图，非代码块）。
 
-**待办**：截图时机识别方案待调研（参考项目：https://github.com/Luke-Evan/videobook 、bradautomates/claude-video），确认后细化。
+**截图时机方案**：LLM 根据带时间戳字幕标出确有讲解价值的画面；抽取该时间点及附近帧，逐帧交多模态模型核验，首个有效帧写入笔记。核验不可用时不插入未经验证的截图。该方案参考 [claude-video 的字幕线索帧](https://github.com/bradautomates/claude-video#transcript-cue-frames)，另参考 [videobook](https://github.com/Luke-Evan/videobook) 的图文笔记目标。
 
 ## 4.3 导出目录结构
 

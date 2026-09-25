@@ -116,7 +116,7 @@ def answer_selection_stream(cfg, selection, question, doc=None):
 
 
 def validate_frame(cfg, image_path, caption=""):
-    """把截图交给多模态模型判断是否有效；不支持视觉则默认通过。"""
+    """把截图交给多模态模型判断是否有效。"""
     try:
         import base64
         with open(image_path, "rb") as f:
@@ -126,6 +126,6 @@ def validate_frame(cfg, image_path, caption=""):
             {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64}},
         ]}]
         r = llm.text(cfg, msgs, max_tokens=5)
-        return "否" not in (r or "")
+        return (r or "").strip().startswith("是")
     except Exception:
-        return True
+        return False

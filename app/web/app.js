@@ -257,8 +257,8 @@ async function startParse() {
     setTimeout(fixImages, 400);
     refreshStar();
     setTimeout(renderMermaids, 700);
-    stateEl.textContent = "完成，可编辑文档";
-    stateEl.style.color = "green";
+    stateEl.textContent = r.note || "完成，可编辑文档";
+    stateEl.style.color = r.note ? "#a65f00" : "green";
     showChatHint();
   } catch (e) {
     stateEl.textContent = "异常：" + e;

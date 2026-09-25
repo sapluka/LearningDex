@@ -28,15 +28,10 @@ def _to_seconds(t):
     return parts[0] * 3600 + parts[1] * 60 + parts[2]
 
 
-def _download_video(url, cfg):
+def _download_video(url, cfg, tmpdir):
     """下载整段视频（纯视频流，<=720p）到临时文件；返回路径或 None。"""
     subtitle.configure(cfg)
-    tmpl = os.path.join(tempfile.gettempdir(), "learndex_src.%(ext)s")
-    for old in glob.glob(os.path.join(tempfile.gettempdir(), "learndex_src.*")):
-        try:
-            os.remove(old)
-        except OSError:
-            pass
+    tmpl = os.path.join(tmpdir, "source.%(ext)s")
     opts = {
         "format": "bv*[height<=720]/bv*/b",
         "outtmpl": tmpl,
@@ -50,7 +45,7 @@ def _download_video(url, cfg):
             ydl.download([url])
     except Exception:
         return None
-    files = glob.glob(os.path.join(tempfile.gettempdir(), "learndex_src.*"))
+    files = glob.glob(os.path.join(tmpdir, "source.*"))
     return files[0] if files else None
 
 
@@ -60,7 +55,7 @@ def _frame(video, sec, out):
     try:
         subprocess.run([FFMPEG, "-y", "-ss", str(max(0, sec)), "-i", video,
                         "-frames:v", "1", "-q:v", "2", out],
-                       capture_output=True, timeout=120)
+                       capture_output=True, timeout=120, check=True)
     except Exception:
         return None
     return out if os.path.exists(out) else None
@@ -72,26 +67,29 @@ def capture(md, url, taskdir, cfg, validate=True):
         return md
     imgdir = os.path.join(taskdir, "images")
     os.makedirs(imgdir, exist_ok=True)
-    video = _download_video(url, cfg)
-    if not video:
-        return SHOT_RE.sub("", md)
-    try:
+    with tempfile.TemporaryDirectory(prefix="learndex_video_") as tmpdir:
+        video = _download_video(url, cfg, tmpdir)
+        if not video:
+            return SHOT_RE.sub("", md)
         for idx, (full, cap, t) in enumerate(shots, 1):
             out = os.path.join(imgdir, f"shot_{idx}.jpg")
-            if not _frame(video, _to_seconds(t), out):
-                continue
-            if validate:
-                from . import agents
-                if not agents.validate_frame(cfg, out, cap):
+            for offset in (0, 2, -2, 5):
+                if not _frame(video, _to_seconds(t) + offset, out):
+                    continue
+                if validate:
+                    from . import agents
+                    if not agents.validate_frame(cfg, out, cap):
+                        try:
+                            os.remove(out)
+                        except OSError:
+                            pass
+                        continue
+                md = md.replace(full, f"![{cap}](images/shot_{idx}.jpg)")
+                break
+            else:
+                if os.path.exists(out):
                     try:
                         os.remove(out)
                     except OSError:
                         pass
-                    continue
-            md = md.replace(full, f"![{cap}](images/shot_{idx}.jpg)")
-    finally:
-        try:
-            os.remove(video)
-        except OSError:
-            pass
     return SHOT_RE.sub("", md)

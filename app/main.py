@@ -335,8 +335,9 @@ class Api:
             try:
                 doc = shoot.capture(doc, url, os.path.join(_state_dir(self.cfg), tid),
                                     self.cfg, validate=self.cfg.get("shot_validate", True))
-            except Exception:
-                pass
+            except Exception as e:
+                doc = shoot.SHOT_RE.sub("", doc)
+                note = f"截图处理失败：{e}"
         saved = _save_output(url, info, doc, self.cfg)
         self.current_taskdir = os.path.dirname(saved["doc"])
         self.current_doc = doc
