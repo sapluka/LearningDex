@@ -5,6 +5,7 @@ import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
 import { math } from "https://esm.sh/@milkdown/plugin-math@7";
 import { samples } from "./samples.mjs";
+import { escapeAttribute, SAFE_PRINT_URI } from "./render_utils.mjs";
 
 let api = null;
 let editor = null;
@@ -22,7 +23,7 @@ window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
 
 function setMarkdown(md) {
   md = (md || "").replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,
-    (_, alt, src) => '<img src="' + src + '" alt="' + alt + '">');
+    (_, alt, src) => '<img src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(alt) + '">');
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const parser = ctx.get(parserCtx);
@@ -329,8 +330,9 @@ function ensureChatLog() {
 
 function renderBubble(b) {
   const raw = b.dataset.raw || "";
-  if (window.marked) {
-    b.innerHTML = window.marked.parse(raw, { breaks: true, gfm: true });
+  if (window.marked && window.DOMPurify) {
+    b.innerHTML = window.DOMPurify.sanitize(window.marked.parse(raw, { breaks: true, gfm: true }),
+      { USE_PROFILES: { html: true } });
   } else {
     b.textContent = raw;
   }
@@ -402,7 +404,7 @@ async function ensureMermaid() {
   if (!mermaidLib) {
     const m = await import("https://esm.sh/mermaid@10");
     mermaidLib = m.default || m;
-    mermaidLib.initialize({ startOnLoad: false, securityLevel: "loose" });
+    mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict" });
   }
   return mermaidLib;
 }
@@ -457,7 +459,12 @@ async function buildPrintDoc() {
   let md = mdForDisplay(getMarkdown());
   md = md.replace(/\\==/g, "==");
   md = md.replace(/==([^=\n]+)==/g, "<mark>$1</mark>");
-  let html = window.marked ? window.marked.parse(md, { breaks: true, gfm: true }) : md;
+  if (!window.marked || !window.DOMPurify) {
+    root.textContent = md;
+    return;
+  }
+  let html = window.DOMPurify.sanitize(window.marked.parse(md, { breaks: true, gfm: true }),
+    { USE_PROFILES: { html: true }, ALLOWED_URI_REGEXP: SAFE_PRINT_URI });
   const blocks = [...html.matchAll(MMD_BLOCK_RE)];
   if (blocks.length) {
     let lib = null;
