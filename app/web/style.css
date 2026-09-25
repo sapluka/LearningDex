@@ -452,6 +452,32 @@ body {
   border-top: 1px solid #ececf0;
 }
 
+.quote-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px;
+  padding: 8px 10px;
+  border-left: 3px solid #4f6ef7;
+  background: #f7f8ff;
+  color: #555;
+  font-size: 12px;
+}
+
+.quote-bar span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quote-bar button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+}
+
 .chat-input {
   flex: 1;
   padding: 11px 14px;

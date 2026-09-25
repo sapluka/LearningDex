@@ -16,6 +16,7 @@ const processingEl = $("processingMessage");
 const chatLog = $("chatLog");
 const chatBubbles = new Map();
 let nextChatId = 0;
+let pendingQuote = "";
 const hlLayer = $("hlLayer");
 const mathLayer = $("mathLayer");
 let currentSkills = [];
@@ -127,6 +128,7 @@ async function init() {
   $("startBtn").onclick = startParse;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
+  $("clearQuote").onclick = clearQuote;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
   $("pdfBtn").onclick = async () => {
     const saved = await api.save_final(getMarkdown());
@@ -181,6 +183,7 @@ async function newParse() {
   currentUrl = "";
   currentTaskId = "";
   chatBubbles.clear();
+  clearQuote();
   imgDir = "";
   $("workspace").hidden = true;
   processingEl.hidden = true;
@@ -221,6 +224,7 @@ async function openSample(sample) {
   currentUrl = "";
   currentTaskId = "";
   chatBubbles.clear();
+  clearQuote();
   imgDir = "";
   $("welcome").hidden = true;
   $("workspace").hidden = false;
@@ -253,6 +257,7 @@ async function startParse() {
   currentUrl = url;
   currentTaskId = "";
   chatBubbles.clear();
+  clearQuote();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = false;
@@ -319,14 +324,32 @@ async function sendChat() {
   const q = $("chatInput").value.trim();
   if (!q) return;
   $("chatInput").value = "";
-  const id = beginReply(q);
+  const quote = pendingQuote;
+  clearQuote();
+  const display = quote ? "引用：" + quote.slice(0, 60) + (quote.length > 60 ? "…" : "") + "\n" + q : q;
+  const id = beginReply(display);
   try {
     if (!$("workspace").hidden) await api.update_doc(getMarkdown());
-    await api.chat(q, id);
+    if (quote) await api.ask_selection(quote, q, id);
+    else await api.chat(q, id);
   } catch (e) {
     window.__chatChunk(id, "异常：" + e);
     window.__chatDone(id);
   }
+}
+
+function setQuote(text) {
+  pendingQuote = text;
+  $("quoteText").textContent = text;
+  $("quoteBar").hidden = false;
+  $("chatInput").value = "请解释这段内容";
+  $("chatInput").focus();
+}
+
+function clearQuote() {
+  pendingQuote = "";
+  $("quoteBar").hidden = true;
+  $("quoteText").textContent = "";
 }
 
 function beginReply(userText) {
@@ -605,7 +628,7 @@ function onDocMouseUp(e) {
   pop.hidden = false;
   pop.innerHTML = "";
   const b1 = el("button", ""); b1.textContent = "「引用」并询问 LLM";
-  b1.onclick = () => { closePop("selectPop"); askSelection(text, ""); };
+  b1.onclick = () => { closePop("selectPop"); setQuote(text); };
   const b2 = el("button", ""); b2.textContent = "网页搜索所选内容";
   b2.onclick = () => { closePop("selectPop"); lookupTerm(text); };
   pop.appendChild(b1);
@@ -618,17 +641,6 @@ function onDocDblClick(e) {
   const text = getSelectionText();
   if (!text) return;
   lookupTerm(text);
-}
-
-async function askSelection(selection, question) {
-  const id = beginReply("引用：" + selection.slice(0, 60) + (selection.length > 60 ? "…" : ""));
-  try {
-    await api.update_doc(getMarkdown());
-    await api.ask_selection(selection, question, id);
-  } catch (e) {
-    window.__chatChunk(id, "异常：" + e);
-    window.__chatDone(id);
-  }
 }
 
 async function lookupTerm(term) {
@@ -651,7 +663,7 @@ async function lookupTerm(term) {
   document.addEventListener("mousedown", h);
 }
 
-function closePops() {
+function closePops(event) {
   if (!event.target.closest(".select-pop")) closePop("selectPop");
   if (!event.target.closest(".term-pop")) closePop("termPop");
 }
@@ -717,6 +729,7 @@ async function loadTask(id) {
   if (!r.ok) return;
   currentUrl = r.url || "";
   currentTaskId = id;
+  clearQuote();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
@@ -803,6 +816,7 @@ async function loadHistory(tid) {
   if (!r.ok) return;
   currentUrl = r.url || "";
   currentTaskId = tid;
+  clearQuote();
   if (r.doc) {
     $("welcome").hidden = true;
     $("workspace").hidden = false;
