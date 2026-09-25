@@ -203,6 +203,12 @@ body {
   border-color: #4f6ef7;
 }
 
+.welcome-error {
+  margin-top: 8px;
+  color: #b42318;
+  font-size: 13px;
+}
+
 .sample-entry {
   margin-top: 26px;
   font-size: 14px;
@@ -306,14 +312,36 @@ body {
   background: #f0f2ff;
 }
 
-.editor {
+.editor-shell {
   flex: 1;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+.editor {
+  width: 100%;
   overflow: auto;
   background: #fff;
   border: 1px solid #eaeaee;
   border-radius: 12px;
   padding: 4px 18px;
   min-height: 0;
+}
+
+.processing-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #eaeaee;
+  border-radius: 12px;
+  color: #555;
+  font-size: 16px;
+  text-align: center;
+  padding: 24px;
 }
 
 .end-bar {
@@ -570,6 +598,19 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 33;
+}
+
+.math-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 34;
+}
+
+.math-item {
+  position: absolute;
+  background: #fff;
+  white-space: nowrap;
 }
 
 .mmd-item {

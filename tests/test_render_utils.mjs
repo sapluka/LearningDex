@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { escapeAttribute, SAFE_PRINT_URI } from "../app/web/render_utils.mjs";
+import { escapeAttribute, restoreMath, SAFE_PRINT_URI } from "../app/web/render_utils.mjs";
 
 test("image attributes cannot inject event handlers", () => {
   const escaped = escapeAttribute('file:///a.jpg" onerror="alert(1)<x>&');
@@ -14,4 +14,9 @@ test("print links accept local images without accepting script URLs", () => {
     assert.ok(SAFE_PRINT_URI.test(uri), uri);
   for (const uri of ["javascript:alert(1)", " javascript:alert(1)", "data:text/html,bad"])
     assert.ok(!SAFE_PRINT_URI.test(uri), uri);
+});
+
+test("math serialization restores subscripts without changing code fences", () => {
+  const md = "公式 $$A\\_n=P(1+r)^n$$\n\n```text\n$A\\_n$\n```";
+  assert.equal(restoreMath(md), "公式 $$A_n=P(1+r)^n$$\n\n```text\n$A\\_n$\n```");
 });

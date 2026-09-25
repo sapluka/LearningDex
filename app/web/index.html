@@ -63,6 +63,7 @@
         <h1 class="h1">视频学习助手</h1>
         <p class="slogan">快速总结并讲解视频内容</p>
         <input id="url" class="url-input" placeholder="输入视频链接" />
+        <div id="welcomeError" class="welcome-error" hidden></div>
         <div class="sample-entry">▣ 示例</div>
         <div class="sample-cards" id="sampleCards"></div>
       </section>
@@ -81,7 +82,10 @@
           <button class="tb" data-wrap="==" title="高亮">H</button>
           <button class="tb" data-wrap="~~" title="删除线">S</button>
         </div>
-        <div id="editor" class="editor"></div>
+        <div class="editor-shell">
+          <div id="editor" class="editor"></div>
+          <div id="processingMessage" class="processing-message" hidden></div>
+        </div>
         <div class="end-bar">
           <button class="btn ghost" id="exportMdBtn">导出 .md</button>
           <button class="btn primary" id="pdfBtn">生成PDF</button>
@@ -93,6 +97,7 @@
       <div id="termPop" class="term-pop" hidden></div>
       <div id="hlLayer" class="hl-layer"></div>
       <div id="mmdLayer" class="mmd-layer"></div>
+      <div id="mathLayer" class="math-layer"></div>
     </main>
 
     <!-- 右栏：对话区 -->

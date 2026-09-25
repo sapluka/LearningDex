@@ -3,9 +3,8 @@ import { commonmark } from "https://esm.sh/@milkdown/preset-commonmark@7.22.1";
 import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
-import { math } from "https://esm.sh/@milkdown/plugin-math@7";
 import { samples } from "./samples.mjs";
-import { escapeAttribute, SAFE_PRINT_URI } from "./render_utils.mjs";
+import { escapeAttribute, restoreMath, SAFE_PRINT_URI } from "./render_utils.mjs";
 
 let api = null;
 let editor = null;
@@ -13,13 +12,18 @@ let currentUrl = "";
 let currentTaskId = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
+const processingEl = $("processingMessage");
 const chatLog = $("chatLog");
 const chatBubbles = new Map();
 let nextChatId = 0;
 const hlLayer = $("hlLayer");
+const mathLayer = $("mathLayer");
 let currentSkills = [];
 let imgDir = "";
-window.__setStatus = (t) => { if (stateEl) stateEl.textContent = t; };
+window.__setStatus = (t) => {
+  stateEl.textContent = t;
+  if (!processingEl.hidden) processingEl.textContent = t;
+};
 
 function setMarkdown(md) {
   md = (md || "").replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,
@@ -39,7 +43,7 @@ function getMarkdown() {
     const view = ctx.get(editorViewCtx);
     md = serializer(view.state.doc);
   });
-  return md;
+  return restoreMath(md);
 }
 
 function wrapSelection(marker) {
@@ -109,7 +113,6 @@ async function init() {
     .use(commonmark)
     .use(gfm)
     .use(history)
-    .use(math)
     .create();
   window.editor = editor;
   editor._setMarkdown = setMarkdown;
@@ -180,14 +183,17 @@ async function newParse() {
   chatBubbles.clear();
   imgDir = "";
   $("workspace").hidden = true;
+  processingEl.hidden = true;
   $("welcome").hidden = false;
   $("url").value = "";
+  $("welcomeError").hidden = true;
   chatLog.style.display = "flex";
   chatLog.style.alignItems = "center";
   chatLog.style.justifyContent = "center";
   chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
   hlLayer.innerHTML = "";
   mmdLayer.innerHTML = "";
+  mathLayer.innerHTML = "";
   setMarkdown("");
   $("favDocBtn").textContent = "☆";
 }
@@ -218,11 +224,13 @@ async function openSample(sample) {
   imgDir = "";
   $("welcome").hidden = true;
   $("workspace").hidden = false;
+  processingEl.hidden = true;
   $("docTitle").textContent = sample.title;
   $("meta").textContent = "内置演示 · 可编辑、提问、导出";
   stateEl.textContent = "示例文档";
   stateEl.style.color = "#666";
   mmdLayer.innerHTML = "";
+  mathLayer.innerHTML = "";
   setMarkdown(sample.markdown);
   scheduleHighlights();
   setTimeout(renderMermaids, 300);
@@ -236,16 +244,24 @@ function openLink(url) {
 
 async function startParse() {
   const url = $("url").value.trim();
-  if (!url) { stateEl.textContent = "请先粘贴视频链接"; return; }
+  if (!url) {
+    $("welcomeError").textContent = "请先粘贴视频链接";
+    $("welcomeError").hidden = false;
+    return;
+  }
+  $("welcomeError").hidden = true;
   currentUrl = url;
   currentTaskId = "";
   chatBubbles.clear();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
-  stateEl.textContent = "处理中：字幕提取 → 转写 → 核验 → 生成文档…";
+  processingEl.hidden = false;
+  processingEl.textContent = "正在提取视频字幕";
+  stateEl.textContent = processingEl.textContent;
   stateEl.style.color = "#666";
   try {
     const r = await api.generate_doc(url);
+    processingEl.hidden = true;
     if (!r.ok) {
       stateEl.textContent = r.error;
       stateEl.style.color = "red";
@@ -267,6 +283,7 @@ async function startParse() {
     stateEl.style.color = r.note ? "#a65f00" : "green";
     showChatHint();
   } catch (e) {
+    processingEl.hidden = true;
     stateEl.textContent = "异常：" + e;
     stateEl.style.color = "red";
   }
@@ -512,7 +529,9 @@ function drawRect(node, from, to, base, cls) {
   }
 }
 
-function renderHighlights() {  hlLayer.innerHTML = "";
+function renderHighlights() {
+  hlLayer.innerHTML = "";
+  renderEditorMath();
   const editorEl = $("editor");
   if (!editorEl || editorEl.closest("[hidden]")) return;
   const base = document.querySelector(".center").getBoundingClientRect();
@@ -530,6 +549,38 @@ function renderHighlights() {  hlLayer.innerHTML = "";
       drawRect(node, s, s + 2, base, "hl-mask");
       drawRect(node, s + 2, s + 2 + inner, base, "hl-box");
       drawRect(node, s + 2 + inner, s + 4 + inner, base, "hl-mask");
+    }
+  }
+}
+
+function renderEditorMath() {
+  mathLayer.innerHTML = "";
+  if (!window.katex) return;
+  const editorEl = $("editor");
+  if (!editorEl || editorEl.closest("[hidden]")) return;
+  const base = document.querySelector(".center").getBoundingClientRect();
+  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
+  const re = /\$\$([^$\n]+)\$\$|\$([^$\n]+)\$/g;
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.parentElement.closest("pre, code")) continue;
+    re.lastIndex = 0;
+    let match;
+    while ((match = re.exec(node.data || ""))) {
+      const range = document.createRange();
+      range.setStart(node, match.index);
+      range.setEnd(node, match.index + match[0].length);
+      const rect = range.getBoundingClientRect();
+      if (!rect.width) continue;
+      const item = document.createElement("div");
+      item.className = "math-item";
+      item.style.left = (rect.left - base.left) + "px";
+      item.style.top = (rect.top - base.top) + "px";
+      item.style.minWidth = rect.width + "px";
+      item.style.minHeight = rect.height + "px";
+      item.innerHTML = window.katex.renderToString(match[1] || match[2],
+        { displayMode: false, throwOnError: false, trust: false });
+      mathLayer.appendChild(item);
     }
   }
 }
@@ -668,6 +719,7 @@ async function loadTask(id) {
   currentTaskId = id;
   $("welcome").hidden = true;
   $("workspace").hidden = false;
+  processingEl.hidden = true;
   $("docTitle").textContent = id;
   $("meta").textContent = "已载入历史任务";
   imgDir = r.taskdir || "";
@@ -754,6 +806,7 @@ async function loadHistory(tid) {
   if (r.doc) {
     $("welcome").hidden = true;
     $("workspace").hidden = false;
+    processingEl.hidden = true;
     $("docTitle").textContent = tid;
     $("meta").textContent = "已载入历史任务";
     imgDir = r.taskdir || "";
