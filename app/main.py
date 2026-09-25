@@ -43,6 +43,12 @@ class Api:
     def load_config(self):
         return self.cfg
 
+    def reset_context(self, doc=""):
+        self.history = []
+        self.current_doc = doc
+        self.current_url = ""
+        return {"ok": True}
+
     def save_config(self, c):
         c = {**self.cfg, **c}
         config.save(c)

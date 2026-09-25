@@ -4,6 +4,7 @@ import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
 import { math } from "https://esm.sh/@milkdown/plugin-math@7";
+import { samples } from "./samples.mjs";
 
 let api = null;
 let editor = null;
@@ -115,6 +116,7 @@ async function init() {
     e.setAttribute("autocapitalize", "off");
   });
   bind();
+  renderSamples();
   $("startBtn").onclick = startParse;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
@@ -158,7 +160,8 @@ async function init() {
 
 function bind() {}
 
-function newParse() {
+async function newParse() {
+  await api.reset_context();
   currentUrl = "";
   imgDir = "";
   $("workspace").hidden = true;
@@ -169,8 +172,45 @@ function newParse() {
   chatLog.style.justifyContent = "center";
   chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
   hlLayer.innerHTML = "";
+  mmdLayer.innerHTML = "";
   setMarkdown("");
   $("favDocBtn").textContent = "☆";
+}
+
+function renderSamples() {
+  const container = $("sampleCards");
+  for (const sample of samples) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "sample-card";
+    const category = document.createElement("small");
+    category.textContent = sample.category;
+    const title = document.createElement("strong");
+    title.textContent = sample.title;
+    const preview = document.createElement("span");
+    preview.textContent = sample.preview;
+    card.append(category, title, preview);
+    card.onclick = () => openSample(sample);
+    container.appendChild(card);
+  }
+}
+
+async function openSample(sample) {
+  await api.reset_context(sample.markdown);
+  currentUrl = "";
+  imgDir = "";
+  $("welcome").hidden = true;
+  $("workspace").hidden = false;
+  $("docTitle").textContent = sample.title;
+  $("meta").textContent = "内置演示 · 可编辑、提问、导出";
+  stateEl.textContent = "示例文档";
+  stateEl.style.color = "#666";
+  mmdLayer.innerHTML = "";
+  setMarkdown(sample.markdown);
+  scheduleHighlights();
+  setTimeout(renderMermaids, 300);
+  $("favDocBtn").textContent = "☆";
+  showChatHint();
 }
 
 function openLink(url) {

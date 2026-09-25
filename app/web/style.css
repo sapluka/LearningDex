@@ -213,18 +213,39 @@ body {
   display: flex;
   gap: 14px;
   margin-top: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .sample-card {
   width: 150px;
-  height: 90px;
-  border: 1px dashed #d9d9de;
+  min-height: 106px;
+  border: 1px solid #d9d9de;
   border-radius: 12px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #fff;
+  text-align: left;
   font-size: 12px;
-  color: #aaa;
+  color: #555;
+  cursor: pointer;
+}
+
+.sample-card:hover,
+.sample-card:focus-visible {
+  border-color: #4f6ef7;
+  background: #f7f8ff;
+}
+
+.sample-card strong {
+  color: #1c1c1e;
+  font-size: 13px;
+}
+
+.sample-card small {
+  color: #4f6ef7;
 }
 
 .workspace {
