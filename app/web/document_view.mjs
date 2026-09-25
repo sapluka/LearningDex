@@ -2,7 +2,6 @@ import { highlightMarkdown, SAFE_PRINT_URI } from "./render_utils.mjs";
 
 export function createDocumentView(getMarkdown, chatLog) {
 const $ = (id) => document.getElementById(id);
-const hlLayer = $("hlLayer");
 const mathLayer = $("mathLayer");
 let imgDir = "";
 
@@ -147,47 +146,8 @@ async function buildPrintDoc() {
   }
 }
 
-function drawRect(node, from, to, base, cls) {
-  const r = document.createRange();
-  try {
-    r.setStart(node, from);
-    r.setEnd(node, to);
-  } catch (e) {
-    return;
-  }
-  for (const rc of r.getClientRects()) {
-    const b = document.createElement("div");
-    b.className = cls;
-    b.style.left = (rc.left - base.left) + "px";
-    b.style.top = (rc.top - base.top) + "px";
-    b.style.width = rc.width + "px";
-    b.style.height = rc.height + "px";
-    hlLayer.appendChild(b);
-  }
-}
-
 function renderHighlights() {
-  hlLayer.innerHTML = "";
   renderEditorMath();
-  const editorEl = $("editor");
-  if (!editorEl || editorEl.closest("[hidden]")) return;
-  const base = document.querySelector(".center").getBoundingClientRect();
-  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  const re = /==([^=]+)==/g;
-  for (const node of nodes) {
-    const data = node.data || "";
-    let m;
-    re.lastIndex = 0;
-    while ((m = re.exec(data)) !== null) {
-      const s = m.index;
-      const inner = m[1].length;
-      drawRect(node, s, s + 2, base, "hl-mask");
-      drawRect(node, s + 2, s + 2 + inner, base, "hl-box");
-      drawRect(node, s + 2 + inner, s + 4 + inner, base, "hl-mask");
-    }
-  }
 }
 
 function renderEditorMath() {
@@ -225,7 +185,6 @@ function renderEditorMath() {
   return {
     setImageDir(dir) { imgDir = dir || ""; },
     clearLayers() {
-      hlLayer.innerHTML = "";
       mmdLayer.innerHTML = "";
       mathLayer.innerHTML = "";
     },

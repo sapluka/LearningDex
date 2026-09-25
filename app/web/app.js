@@ -7,6 +7,7 @@ import { samples } from "./samples.mjs";
 import { highlightMarkdown, prepareEditorImages, restoreEditorImages, restoreMath } from "./render_utils.mjs";
 import { createDocumentView } from "./document_view.mjs";
 import { initPanelDivider } from "./panel_divider.mjs";
+import { configureHighlight, highlightPlugins } from "./highlight_plugin.mjs";
 
 let api = null;
 let editor = null;
@@ -56,12 +57,7 @@ function formatSelection(marker) {
     const view = ctx.get(editorViewCtx);
     const { from, to } = view.state.selection;
     if (from === to) return;
-    if (marker === "==") {
-      const text = view.state.doc.textBetween(from, to, "");
-      view.dispatch(view.state.tr.insertText("==" + text + "==", from, to));
-      return;
-    }
-    const name = { "**": "strong", "*": "emphasis", "~~": "strike_through" }[marker];
+    const name = { "**": "strong", "*": "emphasis", "==": "highlight", "~~": "strike_through" }[marker];
     const mark = view.state.schema.marks[name];
     if (!mark) return;
     const tr = view.state.doc.rangeHasMark(from, to, mark)
@@ -127,10 +123,11 @@ async function init() {
   fillSettings(await api.load_config());
   initPanelDivider(() => { scheduleHighlights(); scheduleMermaid(); });
   editor = await Editor.make()
-    .config((ctx) => ctx.set(rootCtx, $("editor")))
+    .config((ctx) => { ctx.set(rootCtx, $("editor")); configureHighlight(ctx); })
     .use(nord)
     .use(commonmark)
     .use(gfm)
+    .use(highlightPlugins)
     .use(history)
     .create();
   window.editor = editor;

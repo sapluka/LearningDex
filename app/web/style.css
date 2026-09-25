@@ -657,14 +657,6 @@ body {
 .bub.ai mark { background: #fff3a3; }
 .bub.ai .chat-mmd svg { max-width: 100%; height: auto; }
 
-/* ==高亮== 覆盖层 */
-.hl-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 30;
-}
-
 /* Mermaid 图覆盖层（绘制在代码块之上） */
 .mmd-layer {
   position: absolute;
@@ -696,15 +688,9 @@ body {
   max-width: 100%;
 }
 
-.hl-box {
-  position: absolute;
-  background: rgba(255, 214, 0, 0.35);
-  border-radius: 3px;
-}
-
-.hl-mask {
-  position: absolute;
-  background: #ffffff;
+.editor mark.editor-highlight {
+  background: rgba(255, 214, 0, 0.4);
+  border-radius: 2px;
 }
 
 /* 任务清单复选框（Milkdown GFM task item） */
