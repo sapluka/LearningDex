@@ -4,7 +4,8 @@ import { gfm } from "https://esm.sh/@milkdown/preset-gfm@7.22.1";
 import { nord } from "https://esm.sh/@milkdown/theme-nord@7.22.1";
 import { history } from "https://esm.sh/@milkdown/plugin-history@7.22.1";
 import { samples } from "./samples.mjs";
-import { escapeAttribute, highlightMarkdown, restoreMath, SAFE_PRINT_URI } from "./render_utils.mjs";
+import { escapeAttribute, highlightMarkdown, restoreMath } from "./render_utils.mjs";
+import { createDocumentView } from "./document_view.mjs";
 
 let api = null;
 let editor = null;
@@ -14,16 +15,16 @@ const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const processingEl = $("processingMessage");
 const chatLog = $("chatLog");
+const documentView = createDocumentView(getMarkdown, chatLog);
+const { scheduleHighlights, scheduleMermaid, renderHighlights, renderMermaids,
+  renderMessageMermaid, buildPrintDoc, fixImages, mdForDisplay } = documentView;
 const chatBubbles = new Map();
 let nextChatId = 0;
 let pendingQuote = "";
 let draftTimer = null;
 let draftWrite = Promise.resolve();
 let draftError = "";
-const hlLayer = $("hlLayer");
-const mathLayer = $("mathLayer");
 let currentSkills = [];
-let imgDir = "";
 window.__setStatus = (t) => {
   stateEl.textContent = t;
   if (!processingEl.hidden) processingEl.textContent = t;
@@ -85,6 +86,7 @@ window._setMarkdown = setMarkdown;
 window._getMarkdown = getMarkdown;
 window._renderHighlights = renderHighlights;
 window._renderMermaids = renderMermaids;
+window._buildPrintDoc = buildPrintDoc;
 window.__err = "";
 window.addEventListener("error", (e) => { window.__err = "ERR:" + (e.message || e.error); });
 window.addEventListener("unhandledrejection", (e) => { window.__err = "REJ:" + (e.reason && String(e.reason)); });
@@ -136,7 +138,6 @@ async function init() {
     e.setAttribute("autocorrect", "off");
     e.setAttribute("autocapitalize", "off");
   });
-  bind();
   renderSamples();
   $("startBtn").onclick = startParse;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
@@ -191,8 +192,6 @@ async function init() {
   document.addEventListener("mousedown", closePops);
 }
 
-function bind() {}
-
 async function newParse() {
   if (!await flushDraft()) return;
   await api.reset_context();
@@ -200,7 +199,7 @@ async function newParse() {
   currentTaskId = "";
   chatBubbles.clear();
   clearQuote();
-  imgDir = "";
+  documentView.setImageDir("");
   $("workspace").hidden = true;
   processingEl.hidden = true;
   $("welcome").hidden = false;
@@ -210,9 +209,7 @@ async function newParse() {
   chatLog.style.alignItems = "center";
   chatLog.style.justifyContent = "center";
   chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
-  hlLayer.innerHTML = "";
-  mmdLayer.innerHTML = "";
-  mathLayer.innerHTML = "";
+  documentView.clearLayers();
   setMarkdown("");
   $("favDocBtn").textContent = "☆";
 }
@@ -242,7 +239,7 @@ async function openSample(sample) {
   currentTaskId = "";
   chatBubbles.clear();
   clearQuote();
-  imgDir = "";
+  documentView.setImageDir("");
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
@@ -250,8 +247,7 @@ async function openSample(sample) {
   $("meta").textContent = "内置演示 · 可编辑、提问、导出";
   stateEl.textContent = "示例文档";
   stateEl.style.color = "#666";
-  mmdLayer.innerHTML = "";
-  mathLayer.innerHTML = "";
+  documentView.clearLayers();
   setMarkdown(sample.markdown);
   scheduleHighlights();
   setTimeout(renderMermaids, 300);
@@ -296,7 +292,7 @@ async function startParse() {
     $("meta").textContent =
       `${info.uploader || ""} ${info.duration ? Math.round(info.duration / 60) + "分钟" : ""}` +
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
-    imgDir = r.taskdir || "";
+    documentView.setImageDir(r.taskdir || "");
     currentTaskId = r.id || "";
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
@@ -472,219 +468,6 @@ window.__chatDone = (id) => {
   chatBubbles.delete(id);
 };
 
-let hlScheduled = false;
-function scheduleHighlights() {
-  if (hlScheduled) return;
-  hlScheduled = true;
-  requestAnimationFrame(() => { hlScheduled = false; renderHighlights(); });
-}
-
-function fixImages() {
-  if (!imgDir) return;
-  const base = absBase();
-  document.querySelectorAll("#editor img").forEach((im) => {
-    const s = im.getAttribute("src") || "";
-    if (s.startsWith("images/")) im.setAttribute("src", base + "/" + s);
-  });
-}
-
-function absBase() {
-  return imgDir ? "file:///" + imgDir.replace(/\\/g, "/").replace(/^\/+/, "") : "";
-}
-
-function mdForDisplay(md) {
-  const b = absBase();
-  return b ? (md || "").replace(/\]\(images\//g, "](" + b + "/images/") : (md || "");
-}
-
-let mermaidLib = null;
-const mmdLayer = $("mmdLayer");
-const mmdCache = {};
-async function ensureMermaid() {
-  if (!mermaidLib) {
-    const m = await import("https://esm.sh/mermaid@10");
-    mermaidLib = m.default || m;
-    mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict" });
-  }
-  return mermaidLib;
-}
-
-async function renderMessageMermaid(bubble) {
-  const blocks = [...bubble.querySelectorAll("pre code.language-mermaid")];
-  if (!blocks.length) return;
-  let lib;
-  try { lib = await ensureMermaid(); } catch (e) { return; }
-  for (const [index, block] of blocks.entries()) {
-    try {
-      const svg = (await lib.render("chat_mmd_" + Date.now() + "_" + index, block.textContent)).svg;
-      const diagram = document.createElement("div");
-      diagram.className = "chat-mmd";
-      diagram.innerHTML = window.DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
-      block.closest("pre").replaceWith(diagram);
-    } catch (e) { /* preserve source on invalid diagram */ }
-  }
-  chatLog.scrollTop = chatLog.scrollHeight;
-}
-
-async function renderMermaids() {
-  mmdLayer.innerHTML = "";
-  const editorEl = $("editor");
-  if (!editorEl || editorEl.closest("[hidden]")) return;
-  const pres = [];
-  editorEl.querySelectorAll("pre").forEach((p) => {
-    if (p.getAttribute("data-language") === "mermaid") pres.push(p);
-  });
-  if (!pres.length) return;
-  let lib;
-  try { lib = await ensureMermaid(); } catch (e) { return; }
-  const base = document.querySelector(".center").getBoundingClientRect();
-  for (let i = 0; i < pres.length; i++) {
-    const code = pres[i].querySelector("code").textContent;
-    let svg = mmdCache[code];
-    if (!svg) {
-      try { svg = (await lib.render("mmd_" + Date.now() + "_" + i, code)).svg; mmdCache[code] = svg; }
-      catch (e) { continue; }
-    }
-    const r = pres[i].getBoundingClientRect();
-    const d = document.createElement("div");
-    d.className = "mmd-item";
-    d.style.left = (r.left - base.left) + "px";
-    d.style.top = (r.top - base.top) + "px";
-    d.style.width = r.width + "px";
-    d.style.minHeight = r.height + "px";
-    d.innerHTML = svg;
-    mmdLayer.appendChild(d);
-  }
-}
-
-let mmdScheduled = false;
-function scheduleMermaid() {
-  if (mmdScheduled) return;
-  mmdScheduled = true;
-  requestAnimationFrame(() => { mmdScheduled = false; renderMermaids(); });
-}
-
-const MMD_BLOCK_RE = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
-
-function decodeEntities(s) {
-  return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
-}
-
-async function buildPrintDoc() {
-  const root = $("printRoot");
-  let md = mdForDisplay(getMarkdown());
-  md = md.replace(/\\==/g, "==");
-  md = highlightMarkdown(md);
-  if (!window.marked || !window.DOMPurify) {
-    root.textContent = md;
-    return;
-  }
-  let html = window.DOMPurify.sanitize(window.marked.parse(md, { breaks: true, gfm: true }),
-    { USE_PROFILES: { html: true }, ALLOWED_URI_REGEXP: SAFE_PRINT_URI });
-  const blocks = [...html.matchAll(MMD_BLOCK_RE)];
-  if (blocks.length) {
-    let lib = null;
-    try { lib = await ensureMermaid(); } catch (e) { lib = null; }
-    for (let i = 0; i < blocks.length; i++) {
-      let svg = "";
-      if (lib) {
-        try { svg = (await lib.render("pmmd_" + Date.now() + "_" + i, decodeEntities(blocks[i][1]))).svg; }
-        catch (e) { svg = ""; }
-      }
-      html = html.replace(blocks[i][0], () => (svg ? '<div class="print-mmd">' + svg + "</div>" : blocks[i][0]));
-    }
-  }
-  root.innerHTML = html;
-  if (window.renderMathInElement) {
-    try {
-      window.renderMathInElement(root, { delimiters: [
-        { left: "$$", right: "$$", display: true },
-        { left: "\\[", right: "\\]", display: true },
-        { left: "$", right: "$", display: false },
-        { left: "\\(", right: "\\)", display: false },
-      ] });
-    } catch (e) { /* ignore */ }
-  }
-}
-
-window._buildPrintDoc = buildPrintDoc;
-
-function drawRect(node, from, to, base, cls) {
-  const r = document.createRange();
-  try {
-    r.setStart(node, from);
-    r.setEnd(node, to);
-  } catch (e) {
-    return;
-  }
-  for (const rc of r.getClientRects()) {
-    const b = document.createElement("div");
-    b.className = cls;
-    b.style.left = (rc.left - base.left) + "px";
-    b.style.top = (rc.top - base.top) + "px";
-    b.style.width = rc.width + "px";
-    b.style.height = rc.height + "px";
-    hlLayer.appendChild(b);
-  }
-}
-
-function renderHighlights() {
-  hlLayer.innerHTML = "";
-  renderEditorMath();
-  const editorEl = $("editor");
-  if (!editorEl || editorEl.closest("[hidden]")) return;
-  const base = document.querySelector(".center").getBoundingClientRect();
-  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  const re = /==([^=]+)==/g;
-  for (const node of nodes) {
-    const data = node.data || "";
-    let m;
-    re.lastIndex = 0;
-    while ((m = re.exec(data)) !== null) {
-      const s = m.index;
-      const inner = m[1].length;
-      drawRect(node, s, s + 2, base, "hl-mask");
-      drawRect(node, s + 2, s + 2 + inner, base, "hl-box");
-      drawRect(node, s + 2 + inner, s + 4 + inner, base, "hl-mask");
-    }
-  }
-}
-
-function renderEditorMath() {
-  mathLayer.innerHTML = "";
-  if (!window.katex) return;
-  const editorEl = $("editor");
-  if (!editorEl || editorEl.closest("[hidden]")) return;
-  const base = document.querySelector(".center").getBoundingClientRect();
-  const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
-  const re = /\$\$([^$\n]+)\$\$|\$([^$\n]+)\$/g;
-  while (walker.nextNode()) {
-    const node = walker.currentNode;
-    if (node.parentElement.closest("pre, code")) continue;
-    re.lastIndex = 0;
-    let match;
-    while ((match = re.exec(node.data || ""))) {
-      const range = document.createRange();
-      range.setStart(node, match.index);
-      range.setEnd(node, match.index + match[0].length);
-      const rect = range.getBoundingClientRect();
-      if (!rect.width) continue;
-      const item = document.createElement("div");
-      item.className = "math-item";
-      item.style.left = (rect.left - base.left) + "px";
-      item.style.top = (rect.top - base.top) + "px";
-      item.style.minWidth = rect.width + "px";
-      item.style.minHeight = rect.height + "px";
-      item.innerHTML = window.katex.renderToString(match[1] || match[2],
-        { displayMode: false, throwOnError: false, trust: false });
-      mathLayer.appendChild(item);
-    }
-  }
-}
-
 function el(tag, cls) {
   const d = document.createElement(tag);
   d.className = cls;
@@ -828,7 +611,7 @@ async function loadTask(id) {
   processingEl.hidden = true;
   $("docTitle").textContent = r.title || id;
   $("meta").textContent = "已载入历史任务";
-  imgDir = r.taskdir || "";
+  documentView.setImageDir(r.taskdir || "");
   setMarkdown(mdForDisplay(r.doc));
   scheduleHighlights();
   setTimeout(fixImages, 400);
@@ -917,7 +700,7 @@ async function loadHistory(tid) {
     processingEl.hidden = true;
     $("docTitle").textContent = r.title || tid;
     $("meta").textContent = "已载入历史任务";
-    imgDir = r.taskdir || "";
+    documentView.setImageDir(r.taskdir || "");
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
     setTimeout(fixImages, 400);
@@ -925,7 +708,7 @@ async function loadHistory(tid) {
     setTimeout(renderMermaids, 700);
   } else {
     currentTaskId = "";
-    imgDir = "";
+    documentView.setImageDir("");
     $("workspace").hidden = true;
     $("welcome").hidden = false;
   }
