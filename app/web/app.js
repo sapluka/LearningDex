@@ -22,7 +22,8 @@ const { scheduleHighlights, scheduleMermaid, renderHighlights, renderMermaids,
   renderMessageMermaid, buildPrintDoc, fixImages, mdForDisplay } = documentView;
 const chatBubbles = new Map();
 let nextChatId = 0;
-let pendingQuote = "";
+let selectedRange = null;
+let selectedRects = [];
 let draftTimer = null;
 let draftWrite = Promise.resolve();
 let draftError = "";
@@ -52,10 +53,11 @@ function getMarkdown() {
   return restoreMath(restoreEditorImages(documentView.mdForStorage(md)));
 }
 
-function formatSelection(marker) {
+function formatSelection(marker, range = selectedRange) {
   editor.action((ctx) => {
     const view = ctx.get(editorViewCtx);
-    const { from, to } = view.state.selection;
+    if (range?.doc && range.doc !== view.state.doc) return;
+    const { from, to } = range || view.state.selection;
     if (from === to) return;
     const name = { "**": "strong", "*": "emphasis", "==": "highlight", "~~": "strike_through" }[marker];
     const mark = view.state.schema.marks[name];
@@ -64,7 +66,11 @@ function formatSelection(marker) {
       ? view.state.tr.removeMark(from, to, mark)
       : view.state.tr.addMark(from, to, mark.create());
     view.dispatch(tr);
+    view.focus();
   });
+  selectedRange = null;
+  selectedRects = [];
+  $("formatMenu").hidden = true;
   scheduleHighlights();
 }
 
@@ -142,7 +148,6 @@ async function init() {
   $("startBtn").onclick = startParse;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
-  $("clearQuote").onclick = clearQuote;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
   $("pdfBtn").onclick = async () => {
     if (!await flushDraft()) return;
@@ -196,18 +201,24 @@ async function init() {
   $("newParseBtn").onclick = newParse;
   $("historyBtn").onclick = openHistory;
   $("histClose").onclick = () => ($("histModal").hidden = true);
-  document.querySelectorAll(".toolbar .tb").forEach((b) => {
+  document.querySelectorAll("#formatMenu button").forEach((b) => {
     b.onclick = () => formatSelection(b.dataset.wrap);
   });
-  $("editor").addEventListener("mouseup", onDocMouseUp);
-  $("editor").addEventListener("dblclick", onDocDblClick);
+  $("editor").addEventListener("mouseup", rememberSelection);
+  $("editor").addEventListener("contextmenu", openFormatMenu);
   $("editor").addEventListener("scroll", scheduleHighlights);
   $("editor").addEventListener("scroll", scheduleMermaid);
+  $("editor").addEventListener("scroll", () => { $("formatMenu").hidden = true; });
   $("editor").addEventListener("input", scheduleHighlights);
   $("editor").addEventListener("input", scheduleDraft);
   window.addEventListener("resize", scheduleHighlights);
   window.addEventListener("resize", scheduleMermaid);
-  document.addEventListener("mousedown", closePops);
+  document.addEventListener("mousedown", (event) => {
+    if (!event.target.closest("#formatMenu")) $("formatMenu").hidden = true;
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") $("formatMenu").hidden = true;
+  });
 }
 
 async function newParse() {
@@ -216,7 +227,6 @@ async function newParse() {
   currentUrl = "";
   currentTaskId = "";
   chatBubbles.clear();
-  clearQuote();
   documentView.setImageDir("");
   $("workspace").hidden = true;
   processingEl.hidden = true;
@@ -256,7 +266,6 @@ async function openSample(sample) {
   currentUrl = "";
   currentTaskId = "";
   chatBubbles.clear();
-  clearQuote();
   documentView.setImageDir("");
   $("welcome").hidden = true;
   $("workspace").hidden = false;
@@ -289,7 +298,6 @@ async function startParse() {
   currentUrl = url;
   currentTaskId = "";
   chatBubbles.clear();
-  clearQuote();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = false;
@@ -392,32 +400,14 @@ async function sendChat() {
   const q = $("chatInput").value.trim();
   if (!q) return;
   $("chatInput").value = "";
-  const quote = pendingQuote;
-  clearQuote();
-  const display = quote ? "引用：" + quote.slice(0, 60) + (quote.length > 60 ? "…" : "") + "\n" + q : q;
-  const id = beginReply(display);
+  const id = beginReply(q);
   try {
     if (!$("workspace").hidden) await api.update_doc(getMarkdown());
-    if (quote) await api.ask_selection(quote, q, id);
-    else await api.chat(q, id);
+    await api.chat(q, id);
   } catch (e) {
     window.__chatChunk(id, "异常：" + e);
     window.__chatDone(id);
   }
-}
-
-function setQuote(text) {
-  pendingQuote = text;
-  $("quoteText").textContent = text;
-  $("quoteBar").hidden = false;
-  $("chatInput").value = "请解释这段内容";
-  $("chatInput").focus();
-}
-
-function clearQuote() {
-  pendingQuote = "";
-  $("quoteBar").hidden = true;
-  $("quoteText").textContent = "";
 }
 
 function beginReply(userText) {
@@ -492,61 +482,40 @@ function el(tag, cls) {
   return d;
 }
 
-function getSelectionText() {
-  const sel = window.getSelection();
-  return sel && sel.toString().trim() ? sel.toString().trim() : "";
+function rememberSelection(event) {
+  if (event.button !== 0) return;
+  const selection = window.getSelection();
+  const root = $("editor").querySelector(".ProseMirror");
+  selectedRange = null;
+  selectedRects = [];
+  $("formatMenu").hidden = true;
+  if (!selection || selection.isCollapsed || !selection.toString().trim()
+      || !root?.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return;
+  editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const anchor = view.posAtDOM(selection.anchorNode, selection.anchorOffset);
+    const focus = view.posAtDOM(selection.focusNode, selection.focusOffset);
+    const from = Math.min(anchor, focus);
+    const to = Math.max(anchor, focus);
+    if (from < to) selectedRange = { from, to, doc: view.state.doc };
+  });
+  selectedRects = [...selection.getRangeAt(0).getClientRects()]
+    .filter((rect) => rect.width > 0 && rect.height > 0);
 }
 
-function onDocMouseUp(e) {
-  const sel = window.getSelection();
-  const text = sel && sel.toString().trim();
-  if (!text) { closePop("selectPop"); return; }
-  const rect = sel.getRangeAt(0).getBoundingClientRect();
-  const pop = $("selectPop");
-  pop.hidden = false;
-  pop.innerHTML = "";
-  const b1 = el("button", ""); b1.textContent = "「引用」并询问 LLM";
-  b1.onclick = () => { closePop("selectPop"); setQuote(text); };
-  const b2 = el("button", ""); b2.textContent = "网页搜索所选内容";
-  b2.onclick = () => { closePop("selectPop"); lookupTerm(text); };
-  pop.appendChild(b1);
-  pop.appendChild(b2);
-  pop.style.left = Math.min(rect.left, innerWidth - 180) + "px";
-  pop.style.top = rect.bottom + 8 + "px";
+function openFormatMenu(event) {
+  if (!selectedRange || !selectedRects.some((rect) =>
+    event.clientX >= rect.left - 2 && event.clientX <= rect.right + 2
+    && event.clientY >= rect.top - 2 && event.clientY <= rect.bottom + 2)) return;
+  let valid = false;
+  editor.action((ctx) => { valid = ctx.get(editorViewCtx).state.doc === selectedRange.doc; });
+  if (!valid) return;
+  event.preventDefault();
+  const menu = $("formatMenu");
+  menu.hidden = false;
+  menu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8)) + "px";
+  menu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8)) + "px";
 }
-
-function onDocDblClick(e) {
-  const text = getSelectionText();
-  if (!text) return;
-  lookupTerm(text);
-}
-
-async function lookupTerm(term) {
-  const pop = $("termPop");
-  pop.hidden = false;
-  pop.innerHTML = "";
-  const t = el("div", "t-title"); t.textContent = term; pop.appendChild(t);
-  const body = el("div", ""); body.textContent = "查询中…"; pop.appendChild(body);
-  const pos = $("editor").getBoundingClientRect();
-  pop.style.left = Math.min(pos.left + 20, innerWidth - 460) + "px";
-  pop.style.top = (pos.top + 60) + "px";
-  try {
-    const r = await api.lookup_term(term);
-    body.textContent = r.ok ? (r.summary || "(无结果)") : r.error;
-    const s = el("div", "t-source"); s.textContent = "来源：" + (r.ok ? r.source : "-"); pop.appendChild(s);
-  } catch (e) {
-    body.textContent = "异常：" + e;
-  }
-  const h = (ev) => { if (!pop.contains(ev.target)) { pop.hidden = true; document.removeEventListener("mousedown", h); } };
-  document.addEventListener("mousedown", h);
-}
-
-function closePops(event) {
-  if (!event.target.closest(".select-pop")) closePop("selectPop");
-  if (!event.target.closest(".term-pop")) closePop("termPop");
-}
-
-function closePop(id) { $(id).hidden = true; }
 
 window._loadTask = loadTask;
 
@@ -627,7 +596,6 @@ async function loadTask(id) {
   }
   currentUrl = r.url || "";
   currentTaskId = id;
-  clearQuote();
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
@@ -715,7 +683,6 @@ async function loadHistory(tid) {
   if (!r.ok) return;
   currentUrl = r.url || "";
   currentTaskId = tid;
-  clearQuote();
   if (r.doc) {
     $("welcome").hidden = true;
     $("workspace").hidden = false;

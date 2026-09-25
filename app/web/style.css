@@ -292,27 +292,6 @@ body {
   margin: 6px 2px;
 }
 
-.toolbar {
-  display: flex;
-  gap: 6px;
-  margin: 6px 2px;
-}
-
-.tb {
-  min-width: 46px;
-  padding: 0 8px;
-  height: 26px;
-  border: 1px solid #e0e0e5;
-  background: #fff;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.tb:hover {
-  background: #f0f2ff;
-}
-
 .editor-shell {
   flex: 1;
   position: relative;
@@ -360,20 +339,20 @@ body {
   padding-top: 12px;
 }
 
-/* 浮层 */
-.select-pop,
-.term-pop {
-  position: absolute;
+/* 选中文字后的右键格式菜单 */
+.format-menu {
+  position: fixed;
   z-index: 50;
   background: #fff;
   border: 1px solid #e0e0e5;
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-  padding: 8px;
+  padding: 5px;
   font-size: 13px;
+  min-width: 108px;
 }
 
-.select-pop button {
+.format-menu button {
   display: block;
   width: 100%;
   text-align: left;
@@ -384,24 +363,8 @@ body {
   cursor: pointer;
 }
 
-.select-pop button:hover {
+.format-menu button:hover {
   background: #f0f2ff;
-}
-
-.term-pop {
-  max-width: 420px;
-  padding: 16px;
-}
-
-.term-pop .t-title {
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.term-pop .t-source {
-  font-size: 11px;
-  color: #999;
-  margin-top: 6px;
 }
 
 /* 右栏 */
@@ -474,32 +437,6 @@ body {
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid #ececf0;
-}
-
-.quote-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 16px;
-  padding: 8px 10px;
-  border-left: 3px solid #4f6ef7;
-  background: #f7f8ff;
-  color: #555;
-  font-size: 12px;
-}
-
-.quote-bar span {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.quote-bar button {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  font-size: 18px;
 }
 
 .chat-input {

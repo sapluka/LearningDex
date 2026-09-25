@@ -76,12 +76,6 @@
         </div>
         <div id="state" class="state"></div>
         <div id="meta" class="meta"></div>
-        <div class="toolbar">
-          <button class="tb" data-wrap="**" title="加粗">加粗</button>
-          <button class="tb" data-wrap="*" title="斜体">斜体</button>
-          <button class="tb" data-wrap="==" title="高亮">高亮</button>
-          <button class="tb" data-wrap="~~" title="删除线">删除线</button>
-        </div>
         <div class="editor-shell">
           <div id="editor" class="editor"></div>
           <div id="processingMessage" class="processing-message" hidden></div>
@@ -92,9 +86,12 @@
         </div>
       </section>
 
-      <!-- 右上角弹层：查词 / 选区操作 -->
-      <div id="selectPop" class="select-pop" hidden></div>
-      <div id="termPop" class="term-pop" hidden></div>
+      <div id="formatMenu" class="format-menu" role="menu" hidden>
+        <button type="button" role="menuitem" data-wrap="**">加粗</button>
+        <button type="button" role="menuitem" data-wrap="*">斜体</button>
+        <button type="button" role="menuitem" data-wrap="==">高亮</button>
+        <button type="button" role="menuitem" data-wrap="~~">删除线</button>
+      </div>
       <div id="mmdLayer" class="mmd-layer"></div>
       <div id="mathLayer" class="math-layer"></div>
     </main>
@@ -111,10 +108,6 @@
         <span class="chat-empty">今天想要学些什么</span>
       </div>
       <div class="chat-tips">Tips：尝试和 LLM 对话！</div>
-      <div id="quoteBar" class="quote-bar" hidden>
-        <span id="quoteText"></span>
-        <button id="clearQuote" type="button" title="移除引用">×</button>
-      </div>
       <div class="chat-input-row">
         <input id="chatInput" class="chat-input" placeholder="输入问题…" />
         <button class="chat-send" id="chatSendBtn">↵</button>
