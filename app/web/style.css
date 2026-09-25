@@ -329,6 +329,14 @@ body {
   min-height: 0;
 }
 
+.editor img,
+.editor .ProseMirror img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 .processing-message {
   position: absolute;
   inset: 0;
