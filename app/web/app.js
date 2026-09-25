@@ -265,6 +265,7 @@ async function startParse() {
   stateEl.textContent = processingEl.textContent;
   stateEl.style.color = "#666";
   try {
+    await api.save_config(readQuick());
     const r = await api.generate_doc(url);
     processingEl.hidden = true;
     if (!r.ok) {
