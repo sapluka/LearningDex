@@ -120,7 +120,7 @@ const server = http.createServer((req, res) => {
         const values = color.match(/[\d.]+/g)?.map(Number);
         return values?.length >= 3 && (values.length < 4 || values[3] > 0) && (values[0] !== values[1] || values[1] !== values[2]);
       };
-      return [...document.querySelectorAll('body *')].filter(node => node.getBoundingClientRect().width > 0 && !(node instanceof SVGElement) && !node.closest('mark, .bub.user, #favDocBtn')).filter(node => {
+      return [...document.querySelectorAll('body *')].filter(node => node.getBoundingClientRect().width > 0 && !(node instanceof SVGElement) && !node.closest('mark, .bub.user, #favDocBtn, #newParseBtn')).filter(node => {
         const s = getComputedStyle(node);
         return [s.color, s.backgroundColor, s.borderTopColor].some(isColored);
       }).map(node => node.id || node.className);

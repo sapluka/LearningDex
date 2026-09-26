@@ -86,6 +86,28 @@ body {
   background: #eee;
 }
 
+#newParseBtn {
+  --new-parse-ink: linear-gradient(105deg, #2452ec, #7555ef 65%, #ba6abf);
+  border: 1px solid #b8bdff;
+  border-radius: 14px;
+  min-height: 44px;
+  background: linear-gradient(110deg, #eef1ff, #f5effb);
+  color: #4055dd;
+  font-weight: 650;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+#newParseBtn:hover { border-color: #929af0; box-shadow: 0 3px 12px #00000008; }
+#newParseBtn .new-parse-label {
+  background: var(--new-parse-ink);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+#newParseBtn .icon {
+  background: var(--new-parse-ink);
+  mask: url("icons/plus-24.svg") center / contain no-repeat;
+}
+
 .icon {
   display: block;
   width: 22px;
