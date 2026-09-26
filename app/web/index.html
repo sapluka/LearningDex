@@ -22,13 +22,13 @@
 
       <nav class="menu">
         <button class="menu-item" id="newParseBtn">
-          <span class="ico">＋</span><span>新解析</span>
+          <img class="icon" src="icons/plus-24.svg" alt="" aria-hidden="true"><span>新解析</span>
         </button>
         <button class="menu-item" id="taskBtn">
-          <span class="ico">▤</span><span>任务管理</span>
+          <img class="icon" src="icons/file-24.svg" alt="" aria-hidden="true"><span>任务管理</span>
         </button>
         <button class="menu-item" id="favBtn">
-          <span class="ico">★</span><span>我的收藏</span>
+          <img class="icon" src="icons/star-24.svg" alt="" aria-hidden="true"><span>我的收藏</span>
         </button>
       </nav>
 
@@ -51,8 +51,8 @@
       </div>
 
       <div class="foot">
-        <button class="foot-ico" id="githubBtn" title="GitHub 项目入口">🐱</button>
-        <button class="foot-ico" id="settingsBtn" title="设置">⚙</button>
+        <button class="foot-ico" id="githubBtn" title="GitHub 项目入口" aria-label="GitHub 项目入口"><img class="icon" src="icons/mark-github-16.svg" alt="" aria-hidden="true"></button>
+        <button class="foot-ico" id="settingsBtn" title="设置" aria-label="设置"><img class="icon" src="icons/gear-24.svg" alt="" aria-hidden="true"></button>
       </div>
     </aside>
 
@@ -64,7 +64,7 @@
         <p class="slogan">快速总结并讲解视频内容</p>
         <input id="url" class="url-input" placeholder="输入视频链接" />
         <div id="welcomeError" class="welcome-error" hidden></div>
-        <div class="sample-entry">▣ 示例</div>
+        <div class="sample-entry"><img class="icon" src="icons/book-24.svg" alt="" aria-hidden="true"><span>示例</span></div>
         <div class="sample-cards" id="sampleCards"></div>
       </section>
 
@@ -73,7 +73,7 @@
         <div class="doc-head">
           <button type="button" class="doc-title" id="docTitle" title="修改任务标题" disabled>学习文档</button>
           <input id="titleInput" class="doc-title-edit" type="text" maxlength="50" aria-label="任务标题" hidden>
-          <button class="star" id="favDocBtn" title="收藏">☆</button>
+          <button class="star" id="favDocBtn" title="收藏" aria-label="收藏" aria-pressed="false"><img class="icon" src="icons/star-24.svg" alt="" aria-hidden="true"></button>
         </div>
         <div id="state" class="state"></div>
         <div id="meta" class="meta"></div>
@@ -111,7 +111,7 @@
       <div class="chat-tips">Tips：尝试和 LLM 对话！</div>
       <div class="chat-input-row">
         <input id="chatInput" class="chat-input" placeholder="输入问题…" />
-        <button class="chat-send" id="chatSendBtn">↵</button>
+        <button class="chat-send" id="chatSendBtn" title="发送" aria-label="发送"><img class="icon" src="icons/arrow-up-24.svg" alt="" aria-hidden="true"></button>
       </div>
     </section>
   </div>

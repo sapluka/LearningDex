@@ -30,6 +30,7 @@ const server = http.createServer((req, res) => {
       window.pywebview = { api: {
         load_config: async () => ({}), reset_context: async () => ({ok: true}),
         list_favorites: async () => ({ok: true, favorites: []}),
+        toggle_favorite: async () => ({ok: true, favorited: true}),
         update_doc: async () => ({ok: true}), save_draft: async () => ({ok: true}),
         list_tasks: async () => ({ok: true, tasks: ['A', 'B'].map(id => ({id, title: '课程 ' + id, has_doc: true, mtime: 0}))}),
         load_task: async id => ({ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id}]}),
@@ -38,6 +39,10 @@ const server = http.createServer((req, res) => {
     await page.goto(origin + '/index.html');
     await page.waitForFunction(() => !!window.editor);
     await page.waitForSelector('#sampleCards button');
+    const icons = await page.locator('img.icon').evaluateAll(nodes => nodes.filter(node => !node.closest('[hidden]')).map(node => ({loaded: node.complete && node.naturalWidth > 0, source: node.getAttribute('src')})));
+    assert.ok(icons.length >= 6);
+    assert.ok(icons.every(icon => icon.loaded && icon.source.startsWith('icons/')));
+    assert.equal(await page.locator('#githubBtn img').getAttribute('src'), 'icons/mark-github-16.svg');
     const style = async selector => page.locator(selector).evaluate(node => {
       const s = getComputedStyle(node);
       return {size: parseFloat(s.fontSize), weight: Number(s.fontWeight), color: s.color, background: s.backgroundColor};
@@ -68,6 +73,11 @@ const server = http.createServer((req, res) => {
       }).map(node => node.id || node.className);
     });
     assert.deepEqual(coloredElements, []);
+    await page.locator('#taskBtn').click();
+    await page.locator('#taskList .task-item').first().click();
+    await page.locator('#favDocBtn').click();
+    assert.equal(await page.locator('#favDocBtn').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#favDocBtn img').getAttribute('src'), 'icons/star-fill-24.svg');
     assert.deepEqual(errors, []);
     console.log('Browser interface checks passed');
   } finally {

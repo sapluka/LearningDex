@@ -246,7 +246,7 @@ async function newParse() {
   chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
   documentView.clearLayers();
   setMarkdown("");
-  $("favDocBtn").textContent = "☆";
+  setFavoriteState(false);
 }
 
 function renderSamples() {
@@ -285,7 +285,7 @@ async function openSample(sample) {
   setMarkdown(sample.markdown);
   scheduleHighlights();
   setTimeout(renderMermaids, 300);
-  $("favDocBtn").textContent = "☆";
+  setFavoriteState(false);
   showChatHint();
 }
 
@@ -690,13 +690,21 @@ async function openFavorites() {
   $("favsModal").hidden = false;
 }
 
+function setFavoriteState(favorited) {
+  const button = $("favDocBtn");
+  button.setAttribute("aria-pressed", String(Boolean(favorited)));
+  button.title = favorited ? "取消收藏" : "收藏";
+  button.setAttribute("aria-label", button.title);
+  button.querySelector("img").src = "icons/" + (favorited ? "star-fill-24" : "star-24") + ".svg";
+}
+
 async function refreshStar() {
   const id = currentTaskId;
-  if (!id) { $("favDocBtn").textContent = "☆"; return; }
+  if (!id) { setFavoriteState(false); return; }
   try {
     const r = await api.list_favorites();
     const fav = (r.favorites || []).some((f) => f.id === id);
-    $("favDocBtn").textContent = fav ? "★" : "☆";
+    setFavoriteState(fav);
   } catch (e) { /* ignore */ }
 }
 
@@ -704,7 +712,7 @@ async function toggleCurrentFav() {
   const id = currentTaskId;
   if (!id) return;
   const r = await api.toggle_favorite(id, $("docTitle").textContent);
-  if (r.ok) $("favDocBtn").textContent = r.favorited ? "★" : "☆";
+  if (r.ok) setFavoriteState(r.favorited);
 }
 
 async function openHistory() {
