@@ -55,7 +55,7 @@ const server = http.createServer((req, res) => {
       const s = getComputedStyle(node);
       return {size: parseFloat(s.fontSize), weight: Number(s.fontWeight), color: s.color, background: s.backgroundColor};
     });
-    assert.ok((await style('#taskBtn')).size >= 16);
+    assert.equal((await style('#taskBtn')).size, 15);
     assert.ok((await style('#startBtn')).weight >= 600);
     assert.equal((await style('.chat-empty')).color, 'rgb(82, 82, 82)');
     await page.mouse.move(1200, 100);
@@ -68,7 +68,7 @@ const server = http.createServer((req, res) => {
     assert.equal((await style('#saveBtn')).background, 'rgb(229, 229, 229)');
     await page.locator('#closeSettings').click();
     await page.locator('#sampleCards button').first().click();
-    assert.ok((await style('#editor .ProseMirror')).size >= 17);
+    assert.equal((await style('#editor .ProseMirror')).size, 15);
     assert.equal((await style('#editor .ProseMirror')).color, 'rgb(23, 23, 23)');
     const coloredElements = await page.evaluate(() => {
       const isColored = color => {

@@ -11,7 +11,7 @@ body {
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
   background: #f7f7f7;
   color: #171717;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
   line-height: 1.5;
   height: 100vh;
@@ -51,12 +51,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .brand-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .menu {
@@ -74,7 +74,7 @@ body {
   border: none;
   background: transparent;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   color: #171717;
   cursor: pointer;
@@ -93,7 +93,7 @@ body {
 }
 
 .quick-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #525252;
   margin-bottom: 6px;
 }
@@ -102,7 +102,7 @@ body {
   border: 1px dashed #dbdbdb;
   border-radius: 10px;
   padding: 10px;
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
   display: flex;
   flex-direction: column;
@@ -141,7 +141,7 @@ body {
   padding: 8px 12px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -200,7 +200,7 @@ body {
 }
 
 .h1 {
-  font-size: 30px;
+  font-size: 28px;
   margin: 0 0 8px;
 }
 
@@ -215,7 +215,7 @@ body {
   padding: 14px 18px;
   border: 1px solid #dbdbdb;
   border-radius: 14px;
-  font-size: 15px;
+  font-size: 14px;
   outline: none;
 }
 
@@ -226,7 +226,7 @@ body {
 .welcome-error {
   margin-top: 8px;
   color: #505050;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .sample-entry {
@@ -235,7 +235,7 @@ body {
   gap: 8px;
   font-weight: 600;
   margin-top: 26px;
-  font-size: 16px;
+  font-size: 15px;
   color: #555;
 }
 
@@ -258,7 +258,7 @@ body {
   padding: 12px;
   background: #fff;
   text-align: left;
-  font-size: 15px;
+  font-size: 14px;
   color: #404040;
   cursor: pointer;
 }
@@ -271,7 +271,7 @@ body {
 
 .sample-card strong {
   color: #1d1d1d;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .sample-card small {
@@ -295,7 +295,7 @@ body {
 }
 
 .doc-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   font-family: inherit;
   color: inherit;
@@ -327,7 +327,7 @@ body {
   border: 1px solid #171717;
   border-radius: 6px;
   padding: 5px 8px;
-  font: 600 18px "Segoe UI", "Microsoft YaHei", sans-serif;
+  font: 600 17px "Segoe UI", "Microsoft YaHei", sans-serif;
   text-align: center;
   outline: none;
 }
@@ -350,7 +350,7 @@ body {
 
 .state,
 .meta {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
   margin: 6px 2px;
 }
@@ -390,7 +390,7 @@ body {
   border: 1px solid #ebebeb;
   border-radius: 12px;
   color: #555;
-  font-size: 16px;
+  font-size: 15px;
   text-align: center;
   padding: 24px;
 }
@@ -411,7 +411,7 @@ body {
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
   padding: 5px;
-  font-size: 15px;
+  font-size: 14px;
   min-width: 108px;
 }
 
@@ -465,7 +465,7 @@ body {
 
 .chat-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .chat-log {
@@ -478,11 +478,11 @@ body {
 
 .chat-empty {
   color: #525252;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .chat-tips {
-  font-size: 14px;
+  font-size: 13px;
   color: #525252;
   padding: 0 18px 8px;
   text-align: center;
@@ -500,7 +500,7 @@ body {
   padding: 11px 14px;
   border: 1px solid #e2e2e2;
   border-radius: 16px;
-  font-size: 16px;
+  font-size: 15px;
   outline: none;
 }
 
@@ -513,12 +513,12 @@ body {
   border-radius: 50%;
   background: #171717;
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
 }
 
 .msg {
-  font-size: 14px;
+  font-size: 13px;
   color: #525252;
 }
 
@@ -554,7 +554,7 @@ body {
 }
 
 .row label {
-  font-size: 15px;
+  font-size: 14px;
   color: #555;
   white-space: nowrap;
 }
@@ -566,7 +566,7 @@ body {
   padding: 7px 9px;
   border: 1px solid #e2e2e2;
   border-radius: 6px;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .row.right {
@@ -578,7 +578,7 @@ body {
   padding: 8px 10px;
   border: 1px solid #e2e2e2;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 14px;
   font-family: inherit;
   resize: vertical;
 }
@@ -639,7 +639,7 @@ body {
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .task-delete {
@@ -650,7 +650,7 @@ body {
   background: transparent;
   color: #585858;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .task-item:hover {
@@ -663,7 +663,7 @@ body {
 
 .task-item .t-sub {
   color: #525252;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* 对话气泡 */
@@ -671,7 +671,7 @@ body {
   padding: 9px 12px;
   border-radius: 12px;
   max-width: 88%;
-  font-size: 16px;
+  font-size: 15px;
   white-space: pre-wrap;
 }
 
@@ -764,7 +764,7 @@ body {
   left: 4px;
   top: 0;
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 18px;
 }
 
@@ -793,7 +793,7 @@ body {
     max-width: 820px;
     margin: 0 auto;
     color: #000;
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.7;
   }
   .print-root img { max-width: 100%; }
@@ -813,14 +813,14 @@ input::placeholder, textarea::placeholder { color: #666; opacity: 1; }
 .editor .milkdown, .editor .ProseMirror {
   color: #171717;
   font-family: inherit;
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.8;
 }
 .editor .ProseMirror h1, .editor .ProseMirror h2, .editor .ProseMirror h3,
 .editor .ProseMirror strong { color: #111; font-weight: 700; }
 .editor .ProseMirror p, .editor .ProseMirror li { color: inherit; }
 .editor .ProseMirror blockquote { color: #404040; }
-.bub { font-size: 16px; line-height: 1.7; }
+.bub { font-size: 15px; line-height: 1.7; }
 
 /* 单色交互反馈 */
 :root { accent-color: #171717; color-scheme: light; }
@@ -833,7 +833,7 @@ button:disabled { cursor: default; }
 button:not(:disabled):hover { background: #e5e5e5; color: #171717; }
 .btn.primary, .chat-send { background: #171717; color: #fff; }
 .btn.primary:not(:disabled):hover, .chat-send:not(:disabled):hover { background: #e5e5e5; color: #171717; }
-.row button { border: 1px solid #d4d4d4; border-radius: 6px; padding: 7px 12px; font-size: 15px; background: #f5f5f5; }
+.row button { border: 1px solid #d4d4d4; border-radius: 6px; padding: 7px 12px; font-size: 14px; background: #f5f5f5; }
 .row .btn.primary, #saveBtn { background: #171717; color: #fff; border-color: #171717; }
 .editor .ProseMirror a, .bub.ai a { color: #171717; text-decoration: underline; }
 .editor .ProseMirror pre, .editor .ProseMirror code { color: #262626; background: #f5f5f5; }
@@ -842,3 +842,7 @@ button:not(:disabled):hover { background: #e5e5e5; color: #171717; }
 
 .chat-send .icon { filter: invert(1); }
 .chat-send:hover .icon { filter: none; }
+
+.editor .ProseMirror h1 { font-size: 28px; }
+.editor .ProseMirror h2 { font-size: 22px; }
+.editor .ProseMirror h3 { font-size: 18px; }
