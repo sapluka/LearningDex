@@ -152,7 +152,7 @@ async function init() {
   $("pdfBtn").onclick = async () => {
     if (!await flushDraft()) return;
     stateEl.textContent = "正在生成 PDF";
-    stateEl.style.color = "#666";
+    stateEl.style.color = "#404040";
     try {
       await buildPrintDoc();
       await Promise.all([...$("printRoot").querySelectorAll("img")].map((img) =>
@@ -167,10 +167,10 @@ async function init() {
       const saved = await api.generate_pdf(getMarkdown(), $("docTitle").textContent);
       if (!saved.ok) throw new Error(saved.error || "未知错误");
       stateEl.textContent = "PDF 已保存：" + saved.path;
-      stateEl.style.color = "green";
+      stateEl.style.color = "#404040";
     } catch (e) {
       stateEl.textContent = "生成 PDF 失败：" + e.message;
-      stateEl.style.color = "red";
+      stateEl.style.color = "#404040";
     }
   };
   $("exportMdBtn").onclick = exportMarkdown;
@@ -280,7 +280,7 @@ async function openSample(sample) {
   showTitle(sample.title);
   $("meta").textContent = "内置演示 · 可编辑、提问、导出";
   stateEl.textContent = "示例文档";
-  stateEl.style.color = "#666";
+  stateEl.style.color = "#404040";
   documentView.clearLayers();
   setMarkdown(sample.markdown);
   scheduleHighlights();
@@ -320,7 +320,7 @@ async function finishTitleEdit(save) {
   if (!save || title === $("docTitle").textContent) return;
   if (!title) {
     stateEl.textContent = "标题不能为空";
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
     return;
   }
   try {
@@ -329,7 +329,7 @@ async function finishTitleEdit(save) {
     if (currentTaskId === taskId) showTitle(result.title || title);
   } catch (error) {
     stateEl.textContent = "修改标题失败：" + error.message;
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
   }
 }
 
@@ -351,14 +351,14 @@ async function startParse() {
   processingEl.hidden = false;
   processingEl.textContent = "正在提取视频字幕";
   stateEl.textContent = processingEl.textContent;
-  stateEl.style.color = "#666";
+  stateEl.style.color = "#404040";
   try {
     await api.save_config(readQuick());
     const r = await api.generate_doc(url);
     processingEl.hidden = true;
     if (!r.ok) {
       stateEl.textContent = r.error;
-      stateEl.style.color = "red";
+      stateEl.style.color = "#404040";
       return;
     }
     const info = r.info || {};
@@ -374,12 +374,12 @@ async function startParse() {
     refreshStar();
     setTimeout(renderMermaids, 700);
     stateEl.textContent = r.note || "完成，可编辑文档";
-    stateEl.style.color = r.note ? "#a65f00" : "green";
+    stateEl.style.color = "#404040";
     showChatHint();
   } catch (e) {
     processingEl.hidden = true;
     stateEl.textContent = "异常：" + e;
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
   }
 }
 
@@ -399,14 +399,14 @@ async function exportMarkdown() {
     const r = await api.export_md(getMarkdown(), (title || "学习笔记") + ".md");
     if (r.ok) {
       stateEl.textContent = "Markdown 已导出：" + r.path;
-      stateEl.style.color = "green";
+      stateEl.style.color = "#404040";
     } else if (r.error !== "已取消") {
       stateEl.textContent = "导出失败：" + r.error;
-      stateEl.style.color = "red";
+      stateEl.style.color = "#404040";
     }
   } catch (e) {
     stateEl.textContent = "导出失败：" + e;
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
   }
 }
 
@@ -428,7 +428,7 @@ function persistDraft() {
   }).catch((error) => {
     draftError = String(error);
     stateEl.textContent = "草稿保存失败：" + error;
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
   });
   return draftWrite;
 }
@@ -639,7 +639,7 @@ async function loadTask(id) {
   const r = await api.load_task(id);
   if (!r.ok) {
     stateEl.textContent = "打开任务失败：" + r.error;
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
     return;
   }
   currentUrl = r.url || "";
@@ -773,7 +773,7 @@ function startWhenReady() {
     $("welcomeError").textContent = message;
     $("welcomeError").hidden = false;
     stateEl.textContent = message;
-    stateEl.style.color = "red";
+    stateEl.style.color = "#404040";
     window.__err = message;
   });
 }

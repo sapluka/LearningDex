@@ -43,7 +43,7 @@ async function ensureMermaid() {
   if (!mermaidLib) {
     const m = await import("mermaid");
     mermaidLib = m.default || m;
-    mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict" });
+    mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
   }
   return mermaidLib;
 }

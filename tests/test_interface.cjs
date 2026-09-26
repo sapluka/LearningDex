@@ -45,9 +45,29 @@ const server = http.createServer((req, res) => {
     assert.ok((await style('#taskBtn')).size >= 16);
     assert.ok((await style('#startBtn')).weight >= 600);
     assert.equal((await style('.chat-empty')).color, 'rgb(82, 82, 82)');
+    await page.mouse.move(1200, 100);
+    assert.equal((await style('#startBtn')).background, 'rgb(23, 23, 23)');
+    assert.equal((await style('#startBtn')).color, 'rgb(255, 255, 255)');
+    await page.locator('#startBtn').hover();
+    assert.equal((await style('#startBtn')).background, 'rgb(229, 229, 229)');
+    await page.locator('#settingsBtn').click();
+    await page.locator('#saveBtn').hover();
+    assert.equal((await style('#saveBtn')).background, 'rgb(229, 229, 229)');
+    await page.locator('#closeSettings').click();
     await page.locator('#sampleCards button').first().click();
     assert.ok((await style('#editor .ProseMirror')).size >= 17);
     assert.equal((await style('#editor .ProseMirror')).color, 'rgb(23, 23, 23)');
+    const coloredElements = await page.evaluate(() => {
+      const isColored = color => {
+        const values = color.match(/[\d.]+/g)?.map(Number);
+        return values?.length >= 3 && (values.length < 4 || values[3] > 0) && (values[0] !== values[1] || values[1] !== values[2]);
+      };
+      return [...document.querySelectorAll('body *')].filter(node => node.getBoundingClientRect().width > 0 && !(node instanceof SVGElement)).filter(node => {
+        const s = getComputedStyle(node);
+        return [s.color, s.backgroundColor, s.borderTopColor].some(isColored);
+      }).map(node => node.id || node.className);
+    });
+    assert.deepEqual(coloredElements, []);
     assert.deepEqual(errors, []);
     console.log('Browser interface checks passed');
   } finally {

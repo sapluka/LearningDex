@@ -9,7 +9,7 @@
 body {
   margin: 0;
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-  background: #f7f7f8;
+  background: #f7f7f7;
   color: #171717;
   font-size: 16px;
   font-weight: 400;
@@ -28,7 +28,7 @@ body {
   width: 220px;
   flex: 0 0 220px;
   background: #ffffff;
-  border-right: 1px solid #e6e6ea;
+  border-right: 1px solid #e7e7e7;
   display: flex;
   flex-direction: column;
   padding: 16px 12px;
@@ -45,7 +45,7 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: #4f6ef7;
+  background: #171717;
   color: #fff;
   font-weight: 700;
   display: flex;
@@ -82,7 +82,7 @@ body {
 }
 
 .menu-item:hover {
-  background: #f0f2ff;
+  background: #eee;
 }
 
 .menu-item .ico {
@@ -97,7 +97,7 @@ body {
 }
 
 .quick-box {
-  border: 1px dashed #d9d9de;
+  border: 1px dashed #dbdbdb;
   border-radius: 10px;
   padding: 10px;
   font-size: 14px;
@@ -113,7 +113,7 @@ body {
   width: 100%;
   font: inherit;
   padding: 5px 6px;
-  border: 1px solid #e0e0e5;
+  border: 1px solid #e2e2e2;
   border-radius: 6px;
 }
 
@@ -145,17 +145,18 @@ body {
 }
 
 .btn.ghost {
-  background: #eef0f5;
+  background: #f1f1f1;
   color: #333;
 }
 
 .btn.primary {
-  background: #4f6ef7;
+  background: #171717;
   color: #fff;
 }
 
 .btn:hover {
-  opacity: 0.9;
+  background: #e5e5e5;
+  color: #171717;
 }
 
 .foot {
@@ -205,19 +206,19 @@ body {
   width: 80%;
   max-width: 460px;
   padding: 14px 18px;
-  border: 1px solid #d9d9de;
+  border: 1px solid #dbdbdb;
   border-radius: 14px;
   font-size: 15px;
   outline: none;
 }
 
 .url-input:focus {
-  border-color: #4f6ef7;
+  border-color: #171717;
 }
 
 .welcome-error {
   margin-top: 8px;
-  color: #b42318;
+  color: #505050;
   font-size: 15px;
 }
 
@@ -238,7 +239,7 @@ body {
 .sample-card {
   width: 150px;
   min-height: 106px;
-  border: 1px solid #d9d9de;
+  border: 1px solid #dbdbdb;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -253,17 +254,17 @@ body {
 
 .sample-card:hover,
 .sample-card:focus-visible {
-  border-color: #4f6ef7;
-  background: #f7f8ff;
+  border-color: #171717;
+  background: #eee;
 }
 
 .sample-card strong {
-  color: #1c1c1e;
+  color: #1d1d1d;
   font-size: 15px;
 }
 
 .sample-card small {
-  color: #4f6ef7;
+  color: #171717;
 }
 
 .workspace {
@@ -279,7 +280,7 @@ body {
   justify-content: center;
   position: relative;
   padding-bottom: 12px;
-  border-bottom: 1px solid #ececf0;
+  border-bottom: 1px solid #ededed;
 }
 
 .doc-title {
@@ -302,17 +303,17 @@ body {
 }
 
 .doc-title:not(:disabled):hover {
-  background: #f0f2ff;
+  background: #eee;
 }
 
 .doc-title:not(:disabled):hover::after {
   content: " ✎";
-  color: #6979bd;
+  color: #8a8a8a;
 }
 
 .doc-title-edit {
   width: min(440px, calc(100% - 72px));
-  border: 1px solid #4f6ef7;
+  border: 1px solid #171717;
   border-radius: 6px;
   padding: 5px 8px;
   font: 600 18px "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -327,7 +328,7 @@ body {
   background: transparent;
   font-size: 20px;
   cursor: pointer;
-  color: #f0b429;
+  color: #9a9a9a;
 }
 
 .state,
@@ -348,7 +349,7 @@ body {
   width: 100%;
   overflow: auto;
   background: #fff;
-  border: 1px solid #eaeaee;
+  border: 1px solid #ebebeb;
   border-radius: 12px;
   padding: 4px 18px;
   min-height: 0;
@@ -369,7 +370,7 @@ body {
   align-items: center;
   justify-content: center;
   background: #fff;
-  border: 1px solid #eaeaee;
+  border: 1px solid #ebebeb;
   border-radius: 12px;
   color: #555;
   font-size: 16px;
@@ -389,7 +390,7 @@ body {
   position: fixed;
   z-index: 50;
   background: #fff;
-  border: 1px solid #e0e0e5;
+  border: 1px solid #e2e2e2;
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
   padding: 5px;
@@ -409,7 +410,7 @@ body {
 }
 
 .format-menu button:hover {
-  background: #f0f2ff;
+  background: #eee;
 }
 
 /* 右栏 */
@@ -417,7 +418,7 @@ body {
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid #e6e6ea;
+  border-left: 1px solid #e7e7e7;
   background: #ffffff;
   min-height: 0;
   min-width: 0;
@@ -425,7 +426,7 @@ body {
 
 .panel-divider {
   flex: 0 0 6px;
-  background: #e6e6ea;
+  background: #e7e7e7;
   cursor: col-resize;
   touch-action: none;
   outline: none;
@@ -434,7 +435,7 @@ body {
 .panel-divider:hover,
 .panel-divider:focus,
 .panel-divider.dragging {
-  background: #7890ec;
+  background: #a7a7a7;
 }
 
 .chat-head {
@@ -442,7 +443,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 14px 18px;
-  border-bottom: 1px solid #ececf0;
+  border-bottom: 1px solid #ededed;
 }
 
 .chat-ico {
@@ -481,13 +482,13 @@ body {
   display: flex;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid #ececf0;
+  border-top: 1px solid #ededed;
 }
 
 .chat-input {
   flex: 1;
   padding: 11px 14px;
-  border: 1px solid #e0e0e5;
+  border: 1px solid #e2e2e2;
   border-radius: 16px;
   font-size: 16px;
   outline: none;
@@ -497,7 +498,7 @@ body {
   width: 42px;
   border: none;
   border-radius: 50%;
-  background: #4f6ef7;
+  background: #171717;
   color: #fff;
   font-size: 16px;
   cursor: pointer;
@@ -550,7 +551,7 @@ body {
   flex: 1;
   min-width: 120px;
   padding: 7px 9px;
-  border: 1px solid #e0e0e5;
+  border: 1px solid #e2e2e2;
   border-radius: 6px;
   font-size: 15px;
 }
@@ -562,7 +563,7 @@ body {
 #skillContent {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #e0e0e5;
+  border: 1px solid #e2e2e2;
   border-radius: 8px;
   font-size: 15px;
   font-family: inherit;
@@ -589,7 +590,7 @@ body {
 .task-list:hover,
 .mmd-item:hover,
 .bub.ai pre:hover {
-  scrollbar-color: #a9afbd transparent;
+  scrollbar-color: #b2b2b2 transparent;
 }
 
 .editor::-webkit-scrollbar,
@@ -615,7 +616,7 @@ body {
 .task-list:hover::-webkit-scrollbar-thumb,
 .mmd-item:hover::-webkit-scrollbar-thumb,
 .bub.ai pre:hover::-webkit-scrollbar-thumb {
-  background: #a9afbd;
+  background: #b2b2b2;
 }
 
 .task-item {
@@ -634,13 +635,13 @@ body {
   top: 9px;
   border: 0;
   background: transparent;
-  color: #a33333;
+  color: #585858;
   cursor: pointer;
   font-size: 16px;
 }
 
 .task-item:hover {
-  background: #f0f2ff;
+  background: #eee;
 }
 
 .task-item .t-id {
@@ -663,12 +664,12 @@ body {
 
 .bub.user {
   align-self: flex-end;
-  background: #eef1ff;
+  background: #f5f5f5;
 }
 
 .bub.ai {
   align-self: flex-start;
-  background: #f1f1f4;
+  background: #f2f2f2;
   white-space: normal;
 }
 
@@ -676,10 +677,10 @@ body {
   overflow-x: auto;
   padding: 8px;
   border-radius: 6px;
-  background: #e8e8ed;
+  background: #eaeaea;
 }
 
-.bub.ai mark { background: #fff3a3; }
+.bub.ai mark { background: #e5e5e5; color: inherit; text-decoration: underline; }
 .bub.ai .chat-mmd svg { max-width: 100%; height: auto; }
 
 /* Mermaid 图覆盖层（绘制在代码块之上） */
@@ -714,8 +715,10 @@ body {
 }
 
 .editor mark.editor-highlight {
-  background: rgba(255, 214, 0, 0.4);
+  background: #e5e5e5;
   border-radius: 2px;
+  color: inherit;
+  text-decoration: underline;
 }
 
 /* 任务清单复选框（Milkdown GFM task item） */
@@ -732,14 +735,14 @@ body {
   top: 3px;
   width: 14px;
   height: 14px;
-  border: 1.5px solid #9aa0a6;
+  border: 1.5px solid #a0a0a0;
   border-radius: 3px;
   background: #fff;
 }
 
 .editor li[data-item-type="task"][data-checked="true"]::before {
-  background: #4f6ef7;
-  border-color: #4f6ef7;
+  background: #171717;
+  border-color: #171717;
 }
 
 .editor li[data-item-type="task"][data-checked="true"]::after {
@@ -783,7 +786,7 @@ body {
   .print-root img { max-width: 100%; }
   .print-root .print-mmd svg { max-width: 100%; height: auto; }
   .print-root pre { white-space: pre-wrap; word-break: break-word; }
-  .print-root mark { background: #fff3a3; }
+  .print-root mark { background: #dcdcdc; }
   .print-root h1, .print-root h2, .print-root h3 { page-break-after: avoid; }
   .print-root img, .print-root .print-mmd { page-break-inside: avoid; }
   .print-root table { border-collapse: collapse; width: 100%; }
@@ -805,3 +808,21 @@ input::placeholder, textarea::placeholder { color: #666; opacity: 1; }
 .editor .ProseMirror p, .editor .ProseMirror li { color: inherit; }
 .editor .ProseMirror blockquote { color: #404040; }
 .bub { font-size: 16px; line-height: 1.7; }
+
+/* 单色交互反馈 */
+:root { accent-color: #171717; color-scheme: light; }
+::selection { background: #d4d4d4; color: #111; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #525252;
+  outline-offset: 2px;
+}
+button:disabled { cursor: default; }
+button:not(:disabled):hover { background: #e5e5e5; color: #171717; }
+.btn.primary, .chat-send { background: #171717; color: #fff; }
+.btn.primary:not(:disabled):hover, .chat-send:not(:disabled):hover { background: #e5e5e5; color: #171717; }
+.row button { border: 1px solid #d4d4d4; border-radius: 6px; padding: 7px 12px; font-size: 15px; background: #f5f5f5; }
+.row .btn.primary, #saveBtn { background: #171717; color: #fff; border-color: #171717; }
+.editor .ProseMirror a, .bub.ai a { color: #171717; text-decoration: underline; }
+.editor .ProseMirror pre, .editor .ProseMirror code { color: #262626; background: #f5f5f5; }
+
+.row button:not(:disabled):hover, #saveBtn:not(:disabled):hover { background: #e5e5e5; color: #171717; }
