@@ -198,10 +198,10 @@ class Api:
     def _start_stream(self, request_id, user_text, stream):
         threading.Thread(target=self._stream_worker,
                          args=(request_id, user_text, stream, self._context_token,
-                               self.current_taskdir, not self.current_taskdir and not self.current_doc),
+                               self.current_taskdir),
                          daemon=True).start()
 
-    def _stream_worker(self, request_id, user_text, stream, token, taskdir, general):
+    def _stream_worker(self, request_id, user_text, stream, token, taskdir):
         buf = []
         try:
             for chunk in stream:
@@ -221,8 +221,6 @@ class Api:
                 self.history.append({"role": "assistant", "content": "".join(buf)})
                 if taskdir:
                     self._save_history(os.path.basename(taskdir))
-                elif general:
-                    self._save_history("general")
         self._emit_js("window.__chatDone && window.__chatDone(%s)" % json.dumps(request_id))
 
     def ask_selection(self, selection, question, request_id=None):
@@ -283,48 +281,6 @@ class Api:
             return data if isinstance(data, list) else []
         except (OSError, json.JSONDecodeError):
             return []
-
-    def list_histories(self):
-        d = _state_dir(self.cfg)
-        out = []
-        if os.path.isdir(d):
-            for name in os.listdir(d):
-                p = os.path.join(d, name, "chat.json")
-                if os.path.exists(p):
-                    try:
-                        out.append({"id": name, "title": _task_title(os.path.join(d, name), name),
-                                    "count": len(self._load_history(name)),
-                                    "mtime": os.path.getmtime(p)})
-                    except OSError:
-                        pass
-        out.sort(key=lambda x: x["mtime"], reverse=True)
-        return {"ok": True, "histories": out}
-
-    def load_history(self, tid):
-        if not re.match(r"^[A-Za-z0-9_\-]+$", tid or ""):
-            return {"ok": False, "error": "非法任务标识"}
-        with self._chat_lock:
-            self._context_token += 1
-        self.history = self._load_history(tid)
-        self.current_doc = None
-        if tid == "general":
-            self.current_taskdir = ""
-            self.current_url = ""
-            return {"ok": True, "id": tid, "url": "", "history": self.history,
-                    "doc": "", "taskdir": ""}
-        doc = ""
-        self.current_taskdir = os.path.join(_state_dir(self.cfg), tid)
-        self.current_url = _source_url(self.current_taskdir, tid)
-        dp = next((os.path.join(self.current_taskdir, name) for name in
-                   ("draft.md", "final.md", "doc.md")
-                   if os.path.exists(os.path.join(self.current_taskdir, name))), "")
-        if os.path.exists(dp):
-            with open(dp, encoding="utf-8") as f:
-                doc = f.read()
-            self.current_doc = doc
-        return {"ok": True, "id": tid, "title": _task_title(self.current_taskdir, tid),
-                "url": self.current_url, "history": self.history, "doc": doc,
-                "taskdir": self.current_taskdir}
 
     def list_tasks(self):
         d = _state_dir(self.cfg)

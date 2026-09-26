@@ -57,7 +57,6 @@ class TestVideoTasks(unittest.TestCase):
             self.assertEqual(api.list_favorites()["favorites"][0]["title"], "纹理映射与采样")
             api.history = [{"role": "user", "content": "你好"}]
             api._save_history("BV1TITLE")
-            self.assertEqual(api.list_histories()["histories"][0]["title"], "纹理映射与采样")
             self.assertEqual(main._source_info(str(Path(root) / "BV1TITLE"))["title"], "视频原标题")
 
     def test_rename_rejects_missing_or_invalid_task_and_title(self):

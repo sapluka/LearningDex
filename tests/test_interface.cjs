@@ -39,10 +39,18 @@ const server = http.createServer((req, res) => {
     await page.goto(origin + '/index.html');
     await page.waitForFunction(() => !!window.editor);
     await page.waitForSelector('#sampleCards button');
+    assert.equal(await page.locator('#historyBtn, #histModal').count(), 0);
     const icons = await page.locator('img.icon').evaluateAll(nodes => nodes.filter(node => !node.closest('[hidden]')).map(node => ({loaded: node.complete && node.naturalWidth > 0, source: node.getAttribute('src')})));
     assert.ok(icons.length >= 6);
     assert.ok(icons.every(icon => icon.loaded && icon.source.startsWith('icons/')));
     assert.equal(await page.locator('#githubBtn img').getAttribute('src'), 'icons/mark-github-16.svg');
+    const snapshot = async name => {
+      if (!process.env.LEARNINGDEX_UI_SCREENSHOTS) return;
+      const folder = path.resolve(__dirname, '../cache/ui-test');
+      fs.mkdirSync(folder, {recursive: true});
+      await page.screenshot({path: path.join(folder, name + '.png')});
+    };
+    await snapshot('monochrome-home');
     const style = async selector => page.locator(selector).evaluate(node => {
       const s = getComputedStyle(node);
       return {size: parseFloat(s.fontSize), weight: Number(s.fontWeight), color: s.color, background: s.backgroundColor};
@@ -75,9 +83,18 @@ const server = http.createServer((req, res) => {
     assert.deepEqual(coloredElements, []);
     await page.locator('#taskBtn').click();
     await page.locator('#taskList .task-item').first().click();
+    assert.equal(await page.locator('#state').innerText(), '');
+    assert.ok((await page.locator('#chatLog').innerText()).includes('回答 A'));
     await page.locator('#favDocBtn').click();
     assert.equal(await page.locator('#favDocBtn').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#favDocBtn img').getAttribute('src'), 'icons/star-fill-24.svg');
+    await page.locator('#taskBtn').click();
+    await page.locator('#taskList .task-item').nth(1).click();
+    const conversation = await page.locator('#chatLog').innerText();
+    assert.ok(conversation.includes('回答 B'));
+    assert.ok(!conversation.includes('回答 A'));
+    assert.equal(await page.locator('#docTitle').innerText(), '课程 B');
+    await snapshot('monochrome-task');
     assert.deepEqual(errors, []);
     console.log('Browser interface checks passed');
   } finally {

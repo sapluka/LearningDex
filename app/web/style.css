@@ -463,13 +463,6 @@ body {
   border-bottom: 1px solid #ededed;
 }
 
-.chat-ico {
-  border: none;
-  background: transparent;
-  font-size: 16px;
-  cursor: pointer;
-}
-
 .chat-title {
   font-weight: 600;
   font-size: 16px;

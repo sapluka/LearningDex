@@ -12,6 +12,14 @@
 
 CDN 指通过互联网提供前端代码的服务。本项目的界面代码已随软件保存，打开界面和历史任务不依赖远程 CDN；解析视频和调用模型仍需相应网络连接。
 
+界面采用黑白灰配色，图标使用本地 GitHub Octicons（来源和许可见 `app/web/icons/`）。从左侧任务入口打开已有任务，会同时恢复文档和对应对话；不提供独立历史对话查询。
+
+## 测试
+
+- 后端：`python -m unittest discover -s tests -q`
+- 文档渲染：`node --test tests/*.mjs`
+- 界面：安装 Playwright 后运行 `node tests/test_interface.cjs`；使用 Edge 可设置环境变量 `LEARNINGDEX_BROWSER_CHANNEL=msedge`。该检查使用模拟后端，不调用模型或视频服务。
+
 ## 文档
 
 - `REQUIREMENTS.md` — 总需求

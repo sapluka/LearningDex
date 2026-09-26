@@ -205,8 +205,6 @@ async function init() {
   });
   $("titleInput").addEventListener("blur", () => finishTitleEdit(true));
   $("newParseBtn").onclick = newParse;
-  $("historyBtn").onclick = openHistory;
-  $("histClose").onclick = () => ($("histModal").hidden = true);
   document.querySelectorAll("#formatMenu button").forEach((b) => {
     b.onclick = () => formatSelection(b.dataset.wrap);
   });
@@ -648,6 +646,7 @@ async function loadTask(id) {
   $("workspace").hidden = false;
   processingEl.hidden = true;
   showTitle(r.title || id);
+  stateEl.textContent = "";
   $("meta").textContent = "已打开保存的学习文档";
   documentView.setImageDir(r.taskdir || "");
   setMarkdown(mdForDisplay(r.doc));
@@ -713,52 +712,6 @@ async function toggleCurrentFav() {
   if (!id) return;
   const r = await api.toggle_favorite(id, $("docTitle").textContent);
   if (r.ok) setFavoriteState(r.favorited);
-}
-
-async function openHistory() {
-  const r = await api.list_histories();
-  const list = $("histList");
-  list.innerHTML = "";
-  const items = r.histories || [];
-  if (!items.length) list.innerHTML = '<div class="msg">暂无历史对话</div>';
-  for (const h of items) {
-    const d = el("div", "task-item");
-    const id = el("div", "t-id"); id.textContent = h.title || h.id;
-    const sub = el("div", "t-sub");
-    sub.textContent = h.id + " · " + (h.count || 0) + " 条 · " + new Date(h.mtime * 1000).toLocaleString();
-    d.appendChild(id); d.appendChild(sub);
-    d.onclick = () => loadHistory(h.id);
-    list.appendChild(d);
-  }
-  $("histModal").hidden = false;
-}
-
-async function loadHistory(tid) {
-  if (!await flushDraft()) return;
-  const r = await api.load_history(tid);
-  if (!r.ok) return;
-  currentUrl = r.url || "";
-  currentTaskId = tid;
-  if (r.doc) {
-    $("welcome").hidden = true;
-    $("workspace").hidden = false;
-    processingEl.hidden = true;
-    showTitle(r.title || tid);
-    $("meta").textContent = "已打开保存的学习文档";
-    documentView.setImageDir(r.taskdir || "");
-    setMarkdown(mdForDisplay(r.doc));
-    scheduleHighlights();
-    setTimeout(fixImages, 400);
-    refreshStar();
-    setTimeout(renderMermaids, 700);
-  } else {
-    currentTaskId = "";
-    documentView.setImageDir("");
-    $("workspace").hidden = true;
-    $("welcome").hidden = false;
-  }
-  showConversation(r.history || []);
-  $("histModal").hidden = true;
 }
 
 async function saveSettings() {
