@@ -80,7 +80,7 @@ const server = http.createServer((req, res) => {
       const s = getComputedStyle(node);
       return {size: parseFloat(s.fontSize), weight: Number(s.fontWeight), color: s.color, background: s.backgroundColor};
     });
-    assert.equal((await style('#taskBtn')).size, 15);
+    assert.equal((await style('#taskBtn')).size, 13);
     assert.ok((await style('#startBtn')).weight >= 600);
     assert.equal((await style('.chat-empty')).color, 'rgb(82, 82, 82)');
     await page.mouse.move(1200, 100);

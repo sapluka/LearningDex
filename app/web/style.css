@@ -52,12 +52,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .brand-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .menu {
@@ -75,7 +75,7 @@ body {
   border: none;
   background: transparent;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
   color: #171717;
   cursor: pointer;
@@ -821,11 +821,11 @@ button:not(:disabled):hover { background: #e5e5e5; color: #171717; }
 .editor .ProseMirror h3 { font-size: 18px; }
 
 .sidebar-history { flex: 1; min-height: 0; border-top: 1px solid #e5e5e5; padding-top: 12px; margin-bottom: 12px; display: flex; }
-.sidebar-tasks { flex: 1; min-width: 0; overflow-y: auto; font-size: 13px; color: #525252; }
+.sidebar-tasks { flex: 1; min-width: 0; overflow-y: auto; font-size: 11px; color: #525252; }
 .sidebar-task { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; border-radius: 8px; padding: 12px 10px; margin-bottom: 4px; background: transparent; text-align: left; cursor: pointer; }
 .sidebar-task-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.sidebar-task-title { font-size: 15px; color: #171717; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar-task-date { font-size: 13px; color: #666; }
+.sidebar-task-title { font-size: 13px; color: #171717; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-task-date { font-size: 11px; color: #666; }
 .sidebar-task[aria-current="true"] { background: #e5e5e5; }
 .sidebar-task:disabled { opacity: 0.65; }
 .parse-options .chk { display: inline-flex; align-items: center; gap: 6px; }
