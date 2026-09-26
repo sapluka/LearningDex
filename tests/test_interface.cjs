@@ -44,7 +44,7 @@ const server = http.createServer((req, res) => {
           window.__tasks.unshift({id: 'C', title: '新课程', has_doc: true, mtime: 1});
           return {ok: true, id: 'C', title: '新课程', doc: '# 新课程\n\n正文', info: {}};
         },
-        load_task: async id => ({ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id}]}),
+        load_task: async id => ({ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]}),
       }};
     });
     await page.goto(origin + '/index.html');
@@ -120,16 +120,45 @@ const server = http.createServer((req, res) => {
         const values = color.match(/[\d.]+/g)?.map(Number);
         return values?.length >= 3 && (values.length < 4 || values[3] > 0) && (values[0] !== values[1] || values[1] !== values[2]);
       };
-      return [...document.querySelectorAll('body *')].filter(node => node.getBoundingClientRect().width > 0 && !(node instanceof SVGElement)).filter(node => {
+      return [...document.querySelectorAll('body *')].filter(node => node.getBoundingClientRect().width > 0 && !(node instanceof SVGElement) && !node.closest('mark, .bub.user, #favDocBtn')).filter(node => {
         const s = getComputedStyle(node);
         return [s.color, s.backgroundColor, s.borderTopColor].some(isColored);
       }).map(node => node.id || node.className);
     });
     assert.deepEqual(coloredElements, []);
+    const original = '先了解重点内容，再查看示例。';
+    await page.evaluate(text => window._setMarkdown(text), original);
+    const selection = await page.evaluate(() => {
+      const node = document.querySelector('#editor .ProseMirror p').firstChild;
+      const range = document.createRange();
+      range.setStart(node, 3); range.setEnd(node, 7);
+      const selection = window.getSelection();
+      selection.removeAllRanges(); selection.addRange(range);
+      const rect = range.getBoundingClientRect();
+      document.getElementById('editor').dispatchEvent(new MouseEvent('mouseup', {bubbles: true, button: 0}));
+      return {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2};
+    });
+    await page.locator('#editor').evaluate((node, point) => node.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, button: 2, clientX: point.x, clientY: point.y})), selection);
+    await page.locator('#formatMenu button[data-wrap="=="]').click();
+    assert.equal((await style('#editor mark')).background, 'rgb(255, 235, 59)');
+    assert.equal(await page.locator('#editor mark').evaluate(node => getComputedStyle(node).textDecorationLine), 'none');
+    assert.ok((await page.evaluate(() => window._getMarkdown())).includes('==重点内容=='));
+    assert.equal(await page.locator('#editor .ProseMirror').innerText(), original);
+    await page.evaluate(() => window.getSelection().removeAllRanges());
+    await snapshot('revised-highlight');
+    await page.evaluate(() => window._buildPrintDoc());
+    await page.emulateMedia({media: 'print'});
+    assert.equal((await style('#printRoot mark')).background, 'rgb(255, 235, 59)');
+    await page.emulateMedia({media: 'screen'});
+    await page.locator('#editor .ProseMirror').focus();
+    await page.keyboard.press('Control+z');
+    assert.equal(await page.locator('#editor mark').count(), 0);
+    assert.equal(await page.locator('#editor .ProseMirror').innerText(), original);
     await page.locator('#sidebarTasks button[data-task-id="A"]').click();
     assert.equal(await page.locator('#state').innerText(), '');
     assert.ok((await page.locator('#chatLog').innerText()).includes('回答 A'));
     assert.equal((await style('#chatLog .bub.user')).background, 'rgb(230, 240, 255)');
+    assert.equal((await style('#chatLog .bub.ai mark')).background, 'rgb(255, 235, 59)');
     await page.locator('#favDocBtn').click();
     assert.equal(await page.locator('#favDocBtn').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#favDocBtn img').getAttribute('src'), 'icons/star-fill-24.svg');

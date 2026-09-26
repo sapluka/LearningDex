@@ -666,7 +666,7 @@ body {
   background: #eaeaea;
 }
 
-.bub.ai mark { background: #e5e5e5; color: inherit; text-decoration: underline; }
+.bub.ai mark { background: #ffeb3b; color: inherit; text-decoration: none; }
 .bub.ai .chat-mmd svg { max-width: 100%; height: auto; }
 
 /* Mermaid 图覆盖层（绘制在代码块之上） */
@@ -701,10 +701,10 @@ body {
 }
 
 .editor mark.editor-highlight {
-  background: #e5e5e5;
+  background: #ffeb3b;
   border-radius: 2px;
   color: inherit;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 /* 任务清单复选框（Milkdown GFM task item） */
@@ -772,7 +772,7 @@ body {
   .print-root img { max-width: 100%; }
   .print-root .print-mmd svg { max-width: 100%; height: auto; }
   .print-root pre { white-space: pre-wrap; word-break: break-word; }
-  .print-root mark { background: #dcdcdc; }
+  .print-root mark { background: #ffeb3b; color: inherit; text-decoration: none; }
   .print-root h1, .print-root h2, .print-root h3 { page-break-after: avoid; }
   .print-root img, .print-root .print-mmd { page-break-inside: avoid; }
   .print-root table { border-collapse: collapse; width: 100%; }
