@@ -7,6 +7,7 @@ export function initPanelDivider(onResize = () => {}) {
   let share = Number(localStorage.getItem("editorShare")) || 0.5;
 
   function apply(next) {
+    if (divider.hidden) return;
     const space = available();
     if (space <= 0) return;
     const minCenter = Math.min(340, space * 0.4);
@@ -43,4 +44,5 @@ export function initPanelDivider(onResize = () => {}) {
     event.preventDefault();
   });
   window.addEventListener("resize", () => apply(share));
+  return () => apply(share);
 }

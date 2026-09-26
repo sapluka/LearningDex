@@ -39,6 +39,11 @@ const server = http.createServer((req, res) => {
         list_tasks: async () => ({ok: true, tasks: window.__tasks}),
         rename_task: async (id, title) => { window.__tasks.find(task => task.id === id).title = title; return {ok: true, title}; },
         delete_task: async id => { window.__tasks = window.__tasks.filter(task => task.id !== id); return {ok: true}; },
+        generate_doc: async url => {
+          window.__generatedUrl = url;
+          window.__tasks.unshift({id: 'C', title: '新课程', has_doc: true, mtime: 1});
+          return {ok: true, id: 'C', title: '新课程', doc: '# 新课程\n\n正文', info: {}};
+        },
         load_task: async id => ({ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id}]}),
       }};
     });
@@ -46,6 +51,18 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => !!window.editor);
     await page.waitForSelector('#sampleCards button');
     await page.waitForSelector('#sidebarTasks button');
+    const assertWelcomeLayout = async () => {
+      assert.equal(await page.locator('.chat').isVisible(), false);
+      assert.equal(await page.locator('#panelDivider').isVisible(), false);
+      const sidebar = await page.locator('.sidebar').boundingBox();
+      const center = await page.locator('.center').boundingBox();
+      assert.ok(Math.abs(sidebar.width / page.viewportSize().width - 0.2) < 0.001);
+      assert.ok(Math.abs(center.width / page.viewportSize().width - 0.8) < 0.001);
+    };
+    await assertWelcomeLayout();
+    await page.setViewportSize({width: 1200, height: 800});
+    await assertWelcomeLayout();
+    await page.setViewportSize({width: 1440, height: 900});
     assert.equal(await page.locator('.sidebar #whisperModel, .sidebar #proofread, .sidebar #skillBtn, .sidebar #startBtn').count(), 0);
     assert.equal(await page.locator('#historyBtn, #histModal').count(), 0);
     const icons = await page.locator('img.icon').evaluateAll(nodes => nodes.filter(node => !node.closest('[hidden]')).map(node => ({loaded: node.complete && node.naturalWidth > 0, source: node.getAttribute('src')})));
@@ -83,6 +100,19 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.evaluate(() => window.__settings.whisper_model), 'small');
     await page.locator('#closeSettings').click();
     await page.locator('#sampleCards button').first().click();
+    assert.equal(await page.locator('.chat').isVisible(), true);
+    const beforeDrag = await page.locator('.center').boundingBox();
+    const divider = await page.locator('#panelDivider').boundingBox();
+    await page.mouse.move(divider.x + 3, divider.y + 100);
+    await page.mouse.down();
+    await page.mouse.move(divider.x + 83, divider.y + 100);
+    await page.mouse.up();
+    const afterDrag = await page.locator('.center').boundingBox();
+    assert.ok(afterDrag.width > beforeDrag.width + 50);
+    await page.locator('#newParseBtn').click();
+    await assertWelcomeLayout();
+    await page.locator('#sampleCards button').first().click();
+    assert.ok(Math.abs((await page.locator('.center').boundingBox()).width - afterDrag.width) < 1);
     assert.equal((await style('#editor .ProseMirror')).size, 15);
     assert.equal((await style('#editor .ProseMirror')).color, 'rgb(23, 23, 23)');
     const coloredElements = await page.evaluate(() => {
@@ -118,6 +148,15 @@ const server = http.createServer((req, res) => {
     await page.locator('#taskList .task-item').nth(1).locator('.task-delete').click();
     await page.waitForFunction(() => !document.querySelector('#sidebarTasks button[data-task-id="B"]'));
     await page.locator('#tasksClose').click();
+    await assertWelcomeLayout();
+    await page.locator('#url').fill('https://www.bilibili.com/video/BV1TEST');
+    await page.locator('#settingsBtn').click();
+    await page.locator('#startBtn').click();
+    await page.waitForSelector('#sidebarTasks button[data-task-id="C"]');
+    assert.equal(await page.locator('#settings').isVisible(), false);
+    assert.equal(await page.locator('.chat').isVisible(), true);
+    assert.equal(await page.locator('#docTitle').innerText(), '新课程');
+    assert.equal(await page.evaluate(() => window.__generatedUrl), 'https://www.bilibili.com/video/BV1TEST');
     assert.deepEqual(errors, []);
     console.log('Browser interface checks passed');
   } finally {

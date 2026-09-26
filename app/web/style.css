@@ -25,8 +25,9 @@ body {
 
 /* 左栏 */
 .sidebar {
-  width: 220px;
-  flex: 0 0 220px;
+  width: 20%;
+  flex: 0 0 20%;
+  min-width: 0;
   background: #ffffff;
   border-right: 1px solid #e7e7e7;
   display: flex;
@@ -138,7 +139,7 @@ body {
 
 /* 中间栏 */
 .center {
-  flex: 0 0 calc((100% - 226px) / 2);
+  flex: 0 0 calc((80% - 6px) / 2);
   display: flex;
   flex-direction: column;
   padding: 26px 30px;
@@ -154,6 +155,10 @@ body {
   justify-content: center;
   text-align: center;
 }
+
+.app.is-welcome .center { flex: 1 1 0; }
+.app.is-welcome .url-input { width: 80%; max-width: 660px; }
+.app.is-welcome .sample-card { width: 190px; }
 
 .h1 {
   font-size: 28px;

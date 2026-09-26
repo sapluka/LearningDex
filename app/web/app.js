@@ -30,6 +30,17 @@ let draftWrite = Promise.resolve();
 let draftError = "";
 let currentSkills = [];
 let taskSidebar;
+let resizePanels = () => {};
+
+function showWorkspace(visible) {
+  document.querySelector(".app").classList.toggle("is-welcome", !visible);
+  $("welcome").hidden = visible;
+  $("workspace").hidden = !visible;
+  document.querySelector(".chat").hidden = !visible;
+  $("panelDivider").hidden = !visible;
+  if (visible) resizePanels();
+  else document.querySelector(".center").style.flexBasis = "";
+}
 window.__setStatus = (t) => {
   stateEl.textContent = t;
   if (!processingEl.hidden) processingEl.textContent = t;
@@ -130,7 +141,7 @@ async function init() {
   api = window.pywebview.api;
   taskSidebar = createTaskSidebar($("sidebarTasks"), api, loadTask);
   fillSettings(await api.load_config());
-  initPanelDivider(() => { scheduleHighlights(); scheduleMermaid(); });
+  resizePanels = initPanelDivider(() => { scheduleHighlights(); scheduleMermaid(); });
   editor = await Editor.make()
     .config((ctx) => { ctx.set(rootCtx, $("editor")); configureHighlight(ctx); })
     .use(nord)
@@ -238,9 +249,8 @@ async function newParse() {
   showTitle("学习文档");
   chatBubbles.clear();
   documentView.setImageDir("");
-  $("workspace").hidden = true;
+  showWorkspace(false);
   processingEl.hidden = true;
-  $("welcome").hidden = false;
   $("url").value = "";
   $("welcomeError").hidden = true;
   chatLog.style.display = "flex";
@@ -278,8 +288,7 @@ async function openSample(sample) {
   taskSidebar.setActive("");
   chatBubbles.clear();
   documentView.setImageDir("");
-  $("welcome").hidden = true;
-  $("workspace").hidden = false;
+  showWorkspace(true);
   processingEl.hidden = true;
   showTitle(sample.title);
   $("meta").textContent = "内置演示 · 可编辑、提问、导出";
@@ -354,8 +363,7 @@ async function startParse() {
   taskSidebar.setActive("");
   showTitle("学习文档");
   chatBubbles.clear();
-  $("welcome").hidden = true;
-  $("workspace").hidden = false;
+  showWorkspace(true);
   processingEl.hidden = false;
   processingEl.textContent = "正在提取视频字幕";
   stateEl.textContent = processingEl.textContent;
@@ -657,8 +665,7 @@ async function loadTask(id) {
   currentUrl = r.url || "";
   currentTaskId = id;
   taskSidebar.setActive(id);
-  $("welcome").hidden = true;
-  $("workspace").hidden = false;
+  showWorkspace(true);
   processingEl.hidden = true;
   showTitle(r.title || id);
   stateEl.textContent = "";
