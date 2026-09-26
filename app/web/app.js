@@ -9,6 +9,8 @@ import { createDocumentView } from "./document_view.mjs";
 import { initPanelDivider } from "./panel_divider.mjs";
 import { configureHighlight, highlightPlugins } from "./highlight_plugin.mjs";
 import { createTaskSidebar } from "./sidebar_tasks.mjs";
+import { reveal, cancelReveal, createSlogan, openModal } from "./page_motion.mjs";
+import { renderTaskCards } from "./task_library.mjs";
 
 let api = null;
 let editor = null;
@@ -31,15 +33,48 @@ let draftError = "";
 let currentSkills = [];
 let taskSidebar;
 let resizePanels = () => {};
+let activePage = "welcome";
+let navigationRevision = 0;
+let collectionRevision = 0;
+let contextWrite = Promise.resolve();
+const slogan = createSlogan(document.querySelector(".slogan"));
+
+function changeContext(action) {
+  const pending = contextWrite.then(action);
+  contextWrite = pending.catch(() => {});
+  return pending;
+}
+
+function showPage(page) {
+  const isWorkspace = page === "workspace";
+  const isLibrary = page === "tasks" || page === "favorites";
+  for (const id of ["welcome", "workspace", "libraryPage", "taskList", "favList"]) cancelReveal($(id));
+  slogan.stop();
+  activePage = page;
+  const app = document.querySelector(".app");
+  app.classList.toggle("is-welcome", page === "welcome");
+  app.classList.toggle("is-browsing", isLibrary);
+  $("welcome").hidden = page !== "welcome";
+  $("workspace").hidden = !isWorkspace;
+  $("libraryPage").hidden = !isLibrary;
+  document.querySelector(".chat").hidden = !isWorkspace;
+  $("panelDivider").hidden = !isWorkspace;
+  $("formatMenu").hidden = true;
+  if (isWorkspace) resizePanels();
+  else {
+    document.querySelector(".center").style.flexBasis = "";
+    documentView.clearLayers();
+  }
+  for (const [id, name] of [["newParseBtn", "welcome"], ["taskBtn", "tasks"], ["favBtn", "favorites"]]) {
+    if (page === name) $(id).setAttribute("aria-current", "page");
+    else $(id).removeAttribute("aria-current");
+  }
+  reveal($(isLibrary ? "libraryPage" : page), { slide: !isWorkspace });
+  if (page === "welcome") slogan.play();
+}
 
 function showWorkspace(visible) {
-  document.querySelector(".app").classList.toggle("is-welcome", !visible);
-  $("welcome").hidden = visible;
-  $("workspace").hidden = !visible;
-  document.querySelector(".chat").hidden = !visible;
-  $("panelDivider").hidden = !visible;
-  if (visible) resizePanels();
-  else document.querySelector(".center").style.flexBasis = "";
+  showPage(visible ? "workspace" : "welcome");
 }
 window.__setStatus = (t) => {
   stateEl.textContent = t;
@@ -189,7 +224,7 @@ async function init() {
   };
   $("exportMdBtn").onclick = exportMarkdown;
   $("githubBtn").onclick = () => openLink("https://github.com/sapluka/LearningDex");
-  $("settingsBtn").onclick = () => ($("settings").hidden = false);
+  $("settingsBtn").onclick = () => openModal($("settings"));
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
   $("choosePdfDir").onclick = async () => {
@@ -208,9 +243,8 @@ async function init() {
     if (s) { $("skillName").value = s.name; $("skillContent").value = s.content; }
   };
   $("taskBtn").onclick = openTasks;
-  $("tasksClose").onclick = () => ($("tasksModal").hidden = true);
+  $("libraryBack").onclick = newParse;
   $("favBtn").onclick = openFavorites;
-  $("favsClose").onclick = () => ($("favsModal").hidden = true);
   $("favDocBtn").onclick = toggleCurrentFav;
   $("docTitle").onclick = beginTitleEdit;
   $("titleInput").addEventListener("keydown", (event) => {
@@ -237,12 +271,15 @@ async function init() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") $("formatMenu").hidden = true;
   });
+  showPage("welcome");
   await taskSidebar.refresh();
 }
 
 async function newParse() {
-  if (!await flushDraft()) return;
-  await api.reset_context();
+  const request = ++navigationRevision;
+  if (!await flushDraft() || request !== navigationRevision) return;
+  await changeContext(() => request === navigationRevision ? api.reset_context() : null);
+  if (request !== navigationRevision) return;
   currentUrl = "";
   currentTaskId = "";
   taskSidebar.setActive("");
@@ -281,8 +318,10 @@ function renderSamples() {
 }
 
 async function openSample(sample) {
-  if (!await flushDraft()) return;
-  await api.reset_context(sample.markdown);
+  const request = ++navigationRevision;
+  if (!await flushDraft() || request !== navigationRevision) return;
+  await changeContext(() => request === navigationRevision ? api.reset_context(sample.markdown) : null);
+  if (request !== navigationRevision) return;
   currentUrl = "";
   currentTaskId = "";
   taskSidebar.setActive("");
@@ -601,7 +640,7 @@ async function openSkills() {
     $("skillName").value = currentSkills[0].name;
     $("skillContent").value = currentSkills[0].content;
   }
-  $("skillsModal").hidden = false;
+  openModal($("skillsModal"));
 }
 
 async function saveSkill() {
@@ -620,45 +659,75 @@ async function deleteSkill() {
   await openSkills();
 }
 
-async function openTasks() {
-  const r = await api.list_tasks();
-  const list = $("taskList");
-  list.innerHTML = "";
-  const tasks = r.tasks || [];
-  if (!tasks.length) list.innerHTML = '<div class="msg">暂无历史任务</div>';
-  for (const t of tasks) {
-    const d = el("div", "task-item");
-    const id = el("div", "t-id"); id.textContent = t.title || t.id;
-    const sub = el("div", "t-sub");
-    sub.textContent = t.id + " · " + new Date(t.mtime * 1000).toLocaleString();
-    d.appendChild(id); d.appendChild(sub);
-    if (t.has_doc) d.onclick = () => loadTask(t.id);
-    const remove = el("button", "task-delete");
-    remove.textContent = "删除";
-    remove.onclick = async (event) => {
-      event.stopPropagation();
-      if (!window.confirm("删除任务及其笔记、截图和对话？此操作无法撤销。")) return;
-      if (!await flushDraft()) return;
-      const result = await api.delete_task(t.id);
-      if (!result.ok) {
-        stateEl.textContent = "删除失败：" + result.error;
-        return;
-      }
-      if (currentTaskId === t.id) await newParse();
-      await taskSidebar.refresh();
-      await openTasks();
-    };
-    d.appendChild(remove);
-    list.appendChild(d);
-  }
-  $("tasksModal").hidden = false;
+async function openCollection(page) {
+  const request = ++navigationRevision;
+  if (!await flushDraft() || request !== navigationRevision) return;
+  $("libraryTitle").textContent = page === "tasks" ? "任务管理" : "我的收藏";
+  $("librarySubtitle").textContent = page === "tasks" ? "已保存的视频解析记录" : "收藏的学习文档";
+  $("taskList").hidden = page !== "tasks";
+  $("favList").hidden = page !== "favorites";
+  showPage(page);
+  await refreshCollection(page);
 }
 
-async function loadTask(id) {
+async function refreshCollection(page = activePage) {
+  const request = ++collectionRevision;
+  const started = performance.now();
+  const list = $(page === "tasks" ? "taskList" : "favList");
+  list.replaceChildren();
+  $("libraryStatus").textContent = "正在加载…";
+  try {
+    const result = await (page === "tasks" ? api.list_tasks() : api.list_favorites());
+    if (request !== collectionRevision || activePage !== page) return;
+    if (!result.ok) throw new Error(result.error || "加载失败");
+    const items = page === "tasks" ? result.tasks || [] : result.favorites || [];
+    renderTaskCards(list, items, { open: loadTask, remove: page === "tasks" ? deleteTask : null });
+    reveal(list, { slide: performance.now() - started >= 500 });
+    $("libraryStatus").textContent = items.length ? `${items.length} 个${page === "tasks" ? "任务" : "收藏"}` : page === "tasks" ? "暂无历史任务" : "暂无收藏";
+  } catch (error) {
+    if (request === collectionRevision && activePage === page)
+      $("libraryStatus").textContent = "加载失败：" + error.message;
+  }
+}
+
+async function deleteTask(id) {
+  if (!window.confirm("删除任务及其笔记、截图和对话？此操作无法撤销。")) return;
+  const request = ++navigationRevision;
   if (!await flushDraft()) return;
-  const r = await api.load_task(id);
+  const result = await changeContext(() => api.delete_task(id));
+  if (!result.ok) { $("libraryStatus").textContent = "删除失败：" + result.error; return; }
+  if (currentTaskId === id) {
+    currentTaskId = "";
+    currentUrl = "";
+    chatBubbles.clear();
+    taskSidebar.setActive("");
+    showTitle("学习文档");
+    setFavoriteState(false);
+    documentView.setImageDir("");
+    documentView.clearLayers();
+    setMarkdown("");
+    showConversation([]);
+  }
+  await taskSidebar.refresh();
+  if (activePage === "workspace" && !currentTaskId && request === navigationRevision) {
+    await openTasks();
+    return;
+  }
+  if (activePage === "tasks") await refreshCollection();
+}
+
+function openTasks() { return openCollection("tasks"); }
+function openFavorites() { return openCollection("favorites"); }
+
+async function loadTask(id) {
+  const request = ++navigationRevision;
+  if (!await flushDraft() || request !== navigationRevision) return;
+  const r = await changeContext(() => request === navigationRevision ? api.load_task(id) : null);
+  if (request !== navigationRevision) return;
   if (!r.ok) {
-    stateEl.textContent = "打开任务失败：" + r.error;
+    const errorTarget = activePage === "tasks" || activePage === "favorites" ? $("libraryStatus") : activePage === "welcome" ? $("welcomeError") : stateEl;
+    errorTarget.hidden = false;
+    errorTarget.textContent = "打开任务失败：" + r.error;
     stateEl.style.color = "#404040";
     return;
   }
@@ -677,7 +746,6 @@ async function loadTask(id) {
   refreshStar();
   setTimeout(renderMermaids, 700);
   showConversation(r.history || []);
-  $("tasksModal").hidden = true;
 }
 
 function showConversation(hist) {
@@ -692,23 +760,6 @@ function showConversation(hist) {
     chatLog.style.justifyContent = "center";
     chatLog.innerHTML = '<span class="chat-empty">今天想要学些什么</span>';
   }
-}
-
-async function openFavorites() {
-  const r = await api.list_favorites();
-  const list = $("favList");
-  list.innerHTML = "";
-  const favs = r.favorites || [];
-  if (!favs.length) list.innerHTML = '<div class="msg">暂无收藏</div>';
-  for (const f of favs) {
-    const d = el("div", "task-item");
-    const id = el("div", "t-id"); id.textContent = f.title || f.id;
-    const sub = el("div", "t-sub"); sub.textContent = f.id;
-    d.appendChild(id); d.appendChild(sub);
-    d.onclick = () => loadTask(f.id);
-    list.appendChild(d);
-  }
-  $("favsModal").hidden = false;
 }
 
 function setFavoriteState(favorited) {

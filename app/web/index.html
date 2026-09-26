@@ -54,6 +54,16 @@
         <div class="sample-cards" id="sampleCards"></div>
       </section>
 
+      <section id="libraryPage" class="library-page" aria-labelledby="libraryTitle" hidden>
+        <header class="library-head">
+          <div><h1 id="libraryTitle">任务管理</h1><p id="librarySubtitle">已保存的视频解析记录</p></div>
+          <button class="btn ghost" id="libraryBack">返回首页</button>
+        </header>
+        <p id="libraryStatus" class="msg" role="status"></p>
+        <div id="taskList" class="task-list library-list"></div>
+        <div id="favList" class="task-list library-list" hidden></div>
+      </section>
+
       <!-- 工作态 -->
       <section id="workspace" class="workspace" hidden>
         <div class="doc-head">
@@ -178,24 +188,6 @@
         <button class="btn primary" id="skillSave">保存</button>
         <button class="btn" id="skillClose">关闭</button>
       </div>
-    </div>
-  </div>
-
-  <!-- 任务管理弹层 -->
-  <div id="tasksModal" class="modal" hidden>
-    <div class="modal-box">
-      <h2>任务管理</h2>
-      <div id="taskList" class="task-list"></div>
-      <div class="row right"><button class="btn primary" id="tasksClose">关闭</button></div>
-    </div>
-  </div>
-
-  <!-- 我的收藏弹层 -->
-  <div id="favsModal" class="modal" hidden>
-    <div class="modal-box">
-      <h2>我的收藏</h2>
-      <div id="favList" class="task-list"></div>
-      <div class="row right"><button class="btn primary" id="favsClose">关闭</button></div>
     </div>
   </div>
 

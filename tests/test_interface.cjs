@@ -33,10 +33,13 @@ const server = http.createServer((req, res) => {
         load_config: async () => ({}), reset_context: async () => ({ok: true}),
         save_config: async cfg => { window.__settings = cfg; return {ok: true}; },
         list_skills: async () => ({ok: true, skills: []}),
-        list_favorites: async () => ({ok: true, favorites: []}),
+        list_favorites: async () => ({ok: true, favorites: window.__tasks.slice(0, 1)}),
         toggle_favorite: async () => ({ok: true, favorited: true}),
         update_doc: async () => ({ok: true}), save_draft: async () => ({ok: true}),
-        list_tasks: async () => ({ok: true, tasks: window.__tasks}),
+        list_tasks: async () => {
+          if (window.__holdTasks) await new Promise(resolve => { window.__releaseTasks = resolve; });
+          return {ok: true, tasks: window.__tasks};
+        },
         rename_task: async (id, title) => { window.__tasks.find(task => task.id === id).title = title; return {ok: true, title}; },
         delete_task: async id => { window.__tasks = window.__tasks.filter(task => task.id !== id); return {ok: true}; },
         generate_doc: async url => {
@@ -44,7 +47,10 @@ const server = http.createServer((req, res) => {
           window.__tasks.unshift({id: 'C', title: '新课程', has_doc: true, mtime: 1});
           return {ok: true, id: 'C', title: '新课程', doc: '# 新课程\n\n正文', info: {}};
         },
-        load_task: async id => ({ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]}),
+        load_task: async id => {
+          if (window.__holdLoadTask === id) await new Promise(resolve => { window.__releaseTask = resolve; });
+          return {ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]};
+        },
       }};
     });
     await page.goto(origin + '/index.html');
@@ -73,6 +79,8 @@ const server = http.createServer((req, res) => {
       if (!process.env.LEARNINGDEX_UI_SCREENSHOTS) return;
       const folder = path.resolve(__dirname, '../cache/ui-test');
       fs.mkdirSync(folder, {recursive: true});
+      await page.waitForFunction(() => !document.querySelector('.slogan').classList.contains('typing'));
+      await page.evaluate(() => Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getTiming().iterations)).map(a => a.finished.catch(() => {}))));
       await page.screenshot({path: path.join(folder, name + '.png')});
     };
     await snapshot('monochrome-home');
@@ -168,7 +176,11 @@ const server = http.createServer((req, res) => {
     await page.locator('#titleInput').press('Enter');
     await page.waitForFunction(() => document.querySelector('#sidebarTasks button[data-task-id="A"]').textContent.includes('新标题'));
     await page.locator('#taskBtn').click();
-    await page.locator('#taskList .task-item').nth(1).click();
+    assert.equal(await page.locator('.center #libraryPage').isVisible(), true);
+    assert.equal(await page.locator('#tasksModal, #favsModal').count(), 0);
+    assert.equal(await page.locator('.chat').isVisible(), false);
+    await snapshot('task-management-page');
+    await page.locator('#taskList .task-open').nth(1).click();
     const conversation = await page.locator('#chatLog').innerText();
     assert.ok(conversation.includes('回答 B'));
     assert.ok(!conversation.includes('回答 A'));
@@ -178,8 +190,46 @@ const server = http.createServer((req, res) => {
     await page.locator('#taskBtn').click();
     await page.locator('#taskList .task-item').nth(1).locator('.task-delete').click();
     await page.waitForFunction(() => !document.querySelector('#sidebarTasks button[data-task-id="B"]'));
-    await page.locator('#tasksClose').click();
+    await page.locator('#libraryBack').click();
     await assertWelcomeLayout();
+    // A slow task listing must not reopen a page after navigation elsewhere.
+    await page.evaluate(() => { window.__holdTasks = true; });
+    await page.locator('#taskBtn').click();
+    await page.waitForFunction(() => !!window.__releaseTasks);
+    await page.locator('#newParseBtn').click();
+    await page.evaluate(() => { window.__holdTasks = false; window.__releaseTasks(); });
+    await assertWelcomeLayout();
+    assert.equal(await page.locator('#libraryPage').isVisible(), false);
+    // Home transitions expose both the requested rise and progressive text.
+    await page.waitForFunction(() => {
+      const slogan = document.querySelector('.slogan');
+      return slogan.textContent.length > 0 && slogan.textContent.length < slogan.getAttribute('aria-label').length;
+    });
+    await page.waitForFunction(() => !document.querySelector('.slogan').classList.contains('typing'));
+    assert.equal(await page.locator('.slogan').textContent(), '快速总结并讲解视频内容');
+    await page.locator('#favBtn').click();
+    await page.waitForSelector('#favList .task-open');
+    const motion = await page.locator('#libraryPage').evaluate(node => {
+      const animation = node.getAnimations()[0];
+      if (!animation) return null;
+      animation.pause(); animation.currentTime = 0;
+      const s = getComputedStyle(node);
+      const result = {duration: animation.effect.getTiming().duration, opacity: s.opacity, transform: s.transform};
+      animation.finish();
+      return result;
+    });
+    assert.equal(motion?.duration, 500);
+    assert.equal(motion.opacity, '0');
+    assert.ok(motion.transform.includes('24'));
+    await snapshot('favorites-page');
+    await page.locator('#favList .task-open').first().click();
+    assert.equal(await page.locator('#workspace').isVisible(), true);
+    assert.equal(await page.locator('#libraryPage').isVisible(), false);
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.locator('#newParseBtn').click();
+    assert.equal(await page.locator('.slogan').textContent(), '快速总结并讲解视频内容');
+    assert.equal(await page.locator('#welcome').evaluate(node => node.getAnimations().length), 0);
+    await page.emulateMedia({reducedMotion: 'no-preference'});
     await page.locator('#url').fill('https://www.bilibili.com/video/BV1TEST');
     await page.locator('#settingsBtn').click();
     await page.locator('#startBtn').click();
@@ -188,6 +238,24 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('.chat').isVisible(), true);
     assert.equal(await page.locator('#docTitle').innerText(), '新课程');
     assert.equal(await page.evaluate(() => window.__generatedUrl), 'https://www.bilibili.com/video/BV1TEST');
+    await page.locator('#taskBtn').click();
+    await page.evaluate(() => { window.__holdLoadTask = 'C'; });
+    await page.locator('#taskList .task-open').first().click();
+    await page.waitForFunction(() => !!window.__releaseTask);
+    await page.getByRole('button', {name: '删除 新课程', exact: true}).click();
+    await page.evaluate(() => window.__releaseTask());
+    await page.waitForFunction(() => !document.querySelector('#sidebarTasks button[data-task-id="C"]'));
+    assert.equal(await page.locator('#libraryPage').isVisible(), true);
+    assert.equal(await page.locator('#workspace').isVisible(), false);
+    assert.equal(await page.locator('#docTitle').isDisabled(), true);
+    await page.evaluate(() => { window.__holdTasks = true; window.__releaseTasks = null; });
+    await page.locator('#taskBtn').click();
+    await page.waitForFunction(() => !!window.__releaseTasks && document.querySelector('#libraryPage').getAnimations().length === 0);
+    await page.evaluate(() => { window.__holdTasks = false; window.__releaseTasks(); });
+    await page.waitForSelector('#taskList .task-open');
+    const lateMotion = await page.locator('#taskList').evaluate(node => node.getAnimations()[0]?.effect.getKeyframes()[0]);
+    assert.equal(lateMotion?.opacity, '0');
+    assert.ok(lateMotion?.transform.includes('24'));
     assert.deepEqual(errors, []);
     console.log('Browser interface checks passed');
   } finally {
