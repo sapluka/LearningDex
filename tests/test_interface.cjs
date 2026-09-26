@@ -129,6 +129,7 @@ const server = http.createServer((req, res) => {
     await page.locator('#sidebarTasks button[data-task-id="A"]').click();
     assert.equal(await page.locator('#state').innerText(), '');
     assert.ok((await page.locator('#chatLog').innerText()).includes('回答 A'));
+    assert.equal((await style('#chatLog .bub.user')).background, 'rgb(230, 240, 255)');
     await page.locator('#favDocBtn').click();
     assert.equal(await page.locator('#favDocBtn').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#favDocBtn img').getAttribute('src'), 'icons/star-fill-24.svg');
