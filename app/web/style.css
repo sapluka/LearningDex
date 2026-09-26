@@ -92,51 +92,6 @@ body {
   flex: 0 0 22px;
 }
 
-.quick-label {
-  font-size: 13px;
-  color: #525252;
-  margin-bottom: 6px;
-}
-
-.quick-box {
-  border: 1px dashed #dbdbdb;
-  border-radius: 10px;
-  padding: 10px;
-  font-size: 13px;
-  color: #555;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.quick-box select,
-.quick-box input {
-  width: 100%;
-  font: inherit;
-  padding: 5px 6px;
-  border: 1px solid #e2e2e2;
-  border-radius: 6px;
-}
-
-.quick-box input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-}
-
-.quick-box .chk {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  margin-bottom: auto;
-}
-
 .btn {
   padding: 8px 12px;
   border: none;
@@ -164,6 +119,7 @@ body {
 .foot {
   display: flex;
   gap: 12px;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid #eee;
 }
@@ -539,6 +495,8 @@ body {
   padding: 20px 24px;
   width: 560px;
   max-width: 92vw;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-box h2 {
@@ -592,6 +550,8 @@ body {
 .editor,
 .chat-log,
 .task-list,
+.sidebar-tasks,
+.modal-box,
 .mmd-item,
 .bub.ai pre {
   scrollbar-width: thin;
@@ -601,6 +561,8 @@ body {
 .editor:hover,
 .chat-log:hover,
 .task-list:hover,
+.sidebar-tasks:hover,
+.modal-box:hover,
 .mmd-item:hover,
 .bub.ai pre:hover {
   scrollbar-color: #b2b2b2 transparent;
@@ -609,6 +571,8 @@ body {
 .editor::-webkit-scrollbar,
 .chat-log::-webkit-scrollbar,
 .task-list::-webkit-scrollbar,
+.sidebar-tasks::-webkit-scrollbar,
+.modal-box::-webkit-scrollbar,
 .mmd-item::-webkit-scrollbar,
 .bub.ai pre::-webkit-scrollbar {
   width: 6px;
@@ -618,6 +582,8 @@ body {
 .editor::-webkit-scrollbar-thumb,
 .chat-log::-webkit-scrollbar-thumb,
 .task-list::-webkit-scrollbar-thumb,
+.sidebar-tasks::-webkit-scrollbar-thumb,
+.modal-box::-webkit-scrollbar-thumb,
 .mmd-item::-webkit-scrollbar-thumb,
 .bub.ai pre::-webkit-scrollbar-thumb {
   background: transparent;
@@ -627,6 +593,8 @@ body {
 .editor:hover::-webkit-scrollbar-thumb,
 .chat-log:hover::-webkit-scrollbar-thumb,
 .task-list:hover::-webkit-scrollbar-thumb,
+.sidebar-tasks:hover::-webkit-scrollbar-thumb,
+.modal-box:hover::-webkit-scrollbar-thumb,
 .mmd-item:hover::-webkit-scrollbar-thumb,
 .bub.ai pre:hover::-webkit-scrollbar-thumb {
   background: #b2b2b2;
@@ -846,3 +814,14 @@ button:not(:disabled):hover { background: #e5e5e5; color: #171717; }
 .editor .ProseMirror h1 { font-size: 28px; }
 .editor .ProseMirror h2 { font-size: 22px; }
 .editor .ProseMirror h3 { font-size: 18px; }
+
+.sidebar-history { flex: 1; min-height: 0; border-top: 1px solid #e5e5e5; padding-top: 12px; margin-bottom: 12px; display: flex; }
+.sidebar-tasks { flex: 1; min-width: 0; overflow-y: auto; font-size: 13px; color: #525252; }
+.sidebar-task { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; border-radius: 8px; padding: 12px 10px; margin-bottom: 4px; background: transparent; text-align: left; cursor: pointer; }
+.sidebar-task-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sidebar-task-title { font-size: 15px; color: #171717; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-task-date { font-size: 13px; color: #666; }
+.sidebar-task[aria-current="true"] { background: #e5e5e5; }
+.sidebar-task:disabled { opacity: 0.65; }
+.parse-options .chk { display: inline-flex; align-items: center; gap: 6px; }
+.parse-options input[type="checkbox"] { flex: none; min-width: 0; width: 16px; height: 16px; padding: 0; }

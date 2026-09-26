@@ -24,21 +24,29 @@ const server = http.createServer((req, res) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
+    page.on('dialog', dialog => dialog.accept());
     const origin = `http://127.0.0.1:${server.address().port}`;
     await page.route('**/*', route => route.request().url().startsWith(origin) ? route.continue() : route.abort());
     await page.addInitScript(() => {
+      window.__tasks = ['A', 'B'].map(id => ({id, title: '课程 ' + id, has_doc: true, mtime: 0}));
       window.pywebview = { api: {
         load_config: async () => ({}), reset_context: async () => ({ok: true}),
+        save_config: async cfg => { window.__settings = cfg; return {ok: true}; },
+        list_skills: async () => ({ok: true, skills: []}),
         list_favorites: async () => ({ok: true, favorites: []}),
         toggle_favorite: async () => ({ok: true, favorited: true}),
         update_doc: async () => ({ok: true}), save_draft: async () => ({ok: true}),
-        list_tasks: async () => ({ok: true, tasks: ['A', 'B'].map(id => ({id, title: '课程 ' + id, has_doc: true, mtime: 0}))}),
+        list_tasks: async () => ({ok: true, tasks: window.__tasks}),
+        rename_task: async (id, title) => { window.__tasks.find(task => task.id === id).title = title; return {ok: true, title}; },
+        delete_task: async id => { window.__tasks = window.__tasks.filter(task => task.id !== id); return {ok: true}; },
         load_task: async id => ({ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id}]}),
       }};
     });
     await page.goto(origin + '/index.html');
     await page.waitForFunction(() => !!window.editor);
     await page.waitForSelector('#sampleCards button');
+    await page.waitForSelector('#sidebarTasks button');
+    assert.equal(await page.locator('.sidebar #whisperModel, .sidebar #proofread, .sidebar #skillBtn, .sidebar #startBtn').count(), 0);
     assert.equal(await page.locator('#historyBtn, #histModal').count(), 0);
     const icons = await page.locator('img.icon').evaluateAll(nodes => nodes.filter(node => !node.closest('[hidden]')).map(node => ({loaded: node.complete && node.naturalWidth > 0, source: node.getAttribute('src')})));
     assert.ok(icons.length >= 6);
@@ -59,13 +67,20 @@ const server = http.createServer((req, res) => {
     assert.ok((await style('#startBtn')).weight >= 600);
     assert.equal((await style('.chat-empty')).color, 'rgb(82, 82, 82)');
     await page.mouse.move(1200, 100);
+    await page.locator('#settingsBtn').click();
+    assert.equal(await page.locator('#settings #whisperModel, #settings #proofread, #settings #skillBtn, #settings #startBtn').count(), 4);
     assert.equal((await style('#startBtn')).background, 'rgb(23, 23, 23)');
     assert.equal((await style('#startBtn')).color, 'rgb(255, 255, 255)');
     await page.locator('#startBtn').hover();
     assert.equal((await style('#startBtn')).background, 'rgb(229, 229, 229)');
-    await page.locator('#settingsBtn').click();
     await page.locator('#saveBtn').hover();
     assert.equal((await style('#saveBtn')).background, 'rgb(229, 229, 229)');
+    await page.locator('#skillBtn').click();
+    await page.waitForSelector('#skillsModal:not([hidden])');
+    await page.locator('#skillClose').click();
+    await page.locator('#whisperModel').selectOption('small');
+    await page.locator('#saveBtn').click();
+    assert.equal(await page.evaluate(() => window.__settings.whisper_model), 'small');
     await page.locator('#closeSettings').click();
     await page.locator('#sampleCards button').first().click();
     assert.equal((await style('#editor .ProseMirror')).size, 15);
@@ -81,20 +96,28 @@ const server = http.createServer((req, res) => {
       }).map(node => node.id || node.className);
     });
     assert.deepEqual(coloredElements, []);
-    await page.locator('#taskBtn').click();
-    await page.locator('#taskList .task-item').first().click();
+    await page.locator('#sidebarTasks button[data-task-id="A"]').click();
     assert.equal(await page.locator('#state').innerText(), '');
     assert.ok((await page.locator('#chatLog').innerText()).includes('回答 A'));
     await page.locator('#favDocBtn').click();
     assert.equal(await page.locator('#favDocBtn').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#favDocBtn img').getAttribute('src'), 'icons/star-fill-24.svg');
+    await page.locator('#docTitle').click();
+    await page.locator('#titleInput').fill('课程 A 新标题');
+    await page.locator('#titleInput').press('Enter');
+    await page.waitForFunction(() => document.querySelector('#sidebarTasks button[data-task-id="A"]').textContent.includes('新标题'));
     await page.locator('#taskBtn').click();
     await page.locator('#taskList .task-item').nth(1).click();
     const conversation = await page.locator('#chatLog').innerText();
     assert.ok(conversation.includes('回答 B'));
     assert.ok(!conversation.includes('回答 A'));
     assert.equal(await page.locator('#docTitle').innerText(), '课程 B');
+    assert.equal(await page.locator('#sidebarTasks button[aria-current="true"]').getAttribute('data-task-id'), 'B');
     await snapshot('monochrome-task');
+    await page.locator('#taskBtn').click();
+    await page.locator('#taskList .task-item').nth(1).locator('.task-delete').click();
+    await page.waitForFunction(() => !document.querySelector('#sidebarTasks button[data-task-id="B"]'));
+    await page.locator('#tasksClose').click();
     assert.deepEqual(errors, []);
     console.log('Browser interface checks passed');
   } finally {

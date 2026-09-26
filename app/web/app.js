@@ -8,6 +8,7 @@ import { highlightMarkdown, prepareEditorImages, restoreEditorImages, restoreMat
 import { createDocumentView } from "./document_view.mjs";
 import { initPanelDivider } from "./panel_divider.mjs";
 import { configureHighlight, highlightPlugins } from "./highlight_plugin.mjs";
+import { createTaskSidebar } from "./sidebar_tasks.mjs";
 
 let api = null;
 let editor = null;
@@ -28,6 +29,7 @@ let draftTimer = null;
 let draftWrite = Promise.resolve();
 let draftError = "";
 let currentSkills = [];
+let taskSidebar;
 window.__setStatus = (t) => {
   stateEl.textContent = t;
   if (!processingEl.hidden) processingEl.textContent = t;
@@ -126,6 +128,7 @@ function fillSettings(cfg) {
 
 async function init() {
   api = window.pywebview.api;
+  taskSidebar = createTaskSidebar($("sidebarTasks"), api, loadTask);
   fillSettings(await api.load_config());
   initPanelDivider(() => { scheduleHighlights(); scheduleMermaid(); });
   editor = await Editor.make()
@@ -223,6 +226,7 @@ async function init() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") $("formatMenu").hidden = true;
   });
+  await taskSidebar.refresh();
 }
 
 async function newParse() {
@@ -230,6 +234,7 @@ async function newParse() {
   await api.reset_context();
   currentUrl = "";
   currentTaskId = "";
+  taskSidebar.setActive("");
   showTitle("学习文档");
   chatBubbles.clear();
   documentView.setImageDir("");
@@ -270,6 +275,7 @@ async function openSample(sample) {
   await api.reset_context(sample.markdown);
   currentUrl = "";
   currentTaskId = "";
+  taskSidebar.setActive("");
   chatBubbles.clear();
   documentView.setImageDir("");
   $("welcome").hidden = true;
@@ -325,6 +331,7 @@ async function finishTitleEdit(save) {
     const result = await api.rename_task(taskId, title);
     if (!result.ok) throw new Error(result.error || "保存失败");
     if (currentTaskId === taskId) showTitle(result.title || title);
+    await taskSidebar.refresh();
   } catch (error) {
     stateEl.textContent = "修改标题失败：" + error.message;
     stateEl.style.color = "#404040";
@@ -336,12 +343,15 @@ async function startParse() {
   if (!url) {
     $("welcomeError").textContent = "请先粘贴视频链接";
     $("welcomeError").hidden = false;
+    $("setMsg").textContent = "请先在首页粘贴视频链接";
     return;
   }
   $("welcomeError").hidden = true;
   if (!await flushDraft()) return;
+  $("settings").hidden = true;
   currentUrl = url;
   currentTaskId = "";
+  taskSidebar.setActive("");
   showTitle("学习文档");
   chatBubbles.clear();
   $("welcome").hidden = true;
@@ -351,7 +361,8 @@ async function startParse() {
   stateEl.textContent = processingEl.textContent;
   stateEl.style.color = "#404040";
   try {
-    await api.save_config(readQuick());
+    const configured = await api.save_config(readSettings());
+    if (!configured.ok) throw new Error(configured.error || "设置保存失败");
     const r = await api.generate_doc(url);
     processingEl.hidden = true;
     if (!r.ok) {
@@ -365,6 +376,8 @@ async function startParse() {
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     documentView.setImageDir(r.taskdir || "");
     currentTaskId = r.id || "";
+    taskSidebar.setActive(currentTaskId);
+    await taskSidebar.refresh();
     showTitle(r.title || info.title || "学习文档");
     setMarkdown(mdForDisplay(r.doc));
     scheduleHighlights();
@@ -624,6 +637,7 @@ async function openTasks() {
         return;
       }
       if (currentTaskId === t.id) await newParse();
+      await taskSidebar.refresh();
       await openTasks();
     };
     d.appendChild(remove);
@@ -642,6 +656,7 @@ async function loadTask(id) {
   }
   currentUrl = r.url || "";
   currentTaskId = id;
+  taskSidebar.setActive(id);
   $("welcome").hidden = true;
   $("workspace").hidden = false;
   processingEl.hidden = true;
@@ -715,8 +730,9 @@ async function toggleCurrentFav() {
 }
 
 async function saveSettings() {
-  await api.save_config(readSettings());
-  $("setMsg").textContent = "已保存";
+  const result = await api.save_config(readSettings());
+  $("setMsg").textContent = result.ok ? "已保存" : "保存失败：" + result.error;
+  if (result.ok) await taskSidebar.refresh();
 }
 
 async function testConnection() {

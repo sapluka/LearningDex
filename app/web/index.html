@@ -32,22 +32,8 @@
         </button>
       </nav>
 
-      <div class="quick">
-        <div class="quick-label">快速设置</div>
-        <div class="quick-box" id="quickBox">
-          <label>转写模型</label>
-          <select id="whisperModel">
-            <option value="base">base（CPU）</option>
-            <option value="small">small</option>
-            <option value="large-v3-turbo">turbo（GPU）</option>
-          </select>
-          <label class="chk"><input type="checkbox" id="proofread"> LLM 核验</label>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn ghost" id="skillBtn">＋skill</button>
-        <button class="btn primary" id="startBtn">开始解析</button>
+      <div class="sidebar-history" aria-label="历史任务">
+        <div id="sidebarTasks" class="sidebar-tasks">正在加载历史任务</div>
       </div>
 
       <div class="foot">
@@ -62,7 +48,7 @@
       <section id="welcome" class="welcome">
         <h1 class="h1">视频学习助手</h1>
         <p class="slogan">快速总结并讲解视频内容</p>
-        <input id="url" class="url-input" placeholder="输入视频链接" />
+        <input id="url" class="url-input" placeholder="输入视频链接，按回车开始解析" />
         <div id="welcomeError" class="welcome-error" hidden></div>
         <div class="sample-entry"><img class="icon" src="icons/book-24.svg" alt="" aria-hidden="true"><span>示例</span></div>
         <div class="sample-cards" id="sampleCards"></div>
@@ -150,6 +136,19 @@
         <label>PDF 输出目录</label>
         <input id="pdfOutputDir" placeholder="默认同笔记存储目录">
         <button id="choosePdfDir" type="button">选择</button>
+      </div>
+      <div class="row parse-options">
+        <label for="whisperModel">转写模型</label>
+        <select id="whisperModel">
+          <option value="base">base（CPU）</option>
+          <option value="small">small</option>
+          <option value="large-v3-turbo">turbo（GPU）</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="proofread"> LLM 核验</label>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="skillBtn">Skill 管理</button>
+        <button class="btn primary" id="startBtn">开始解析</button>
       </div>
       <div class="row">
         <button id="testBtn">检验连接</button>
