@@ -161,7 +161,8 @@ const server = http.createServer((req, res) => {
     assert.equal((await style('#chatLog .bub.ai mark')).background, 'rgb(255, 235, 59)');
     await page.locator('#favDocBtn').click();
     assert.equal(await page.locator('#favDocBtn').getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.locator('#favDocBtn img').getAttribute('src'), 'icons/star-fill-24.svg');
+    assert.ok((await page.locator('#favDocBtn .icon').evaluate(node => getComputedStyle(node).maskImage)).includes('star-fill-24.svg'));
+    assert.equal((await style('#favDocBtn .icon')).background, 'rgb(245, 166, 35)');
     await page.locator('#docTitle').click();
     await page.locator('#titleInput').fill('课程 A 新标题');
     await page.locator('#titleInput').press('Enter');

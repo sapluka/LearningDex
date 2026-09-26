@@ -306,7 +306,7 @@ body {
   background: transparent;
   font-size: 20px;
   cursor: pointer;
-  color: #9a9a9a;
+  color: #f5a623;
 }
 
 .state,
@@ -830,3 +830,10 @@ button:not(:disabled):hover { background: #e5e5e5; color: #171717; }
 .sidebar-task:disabled { opacity: 0.65; }
 .parse-options .chk { display: inline-flex; align-items: center; gap: 6px; }
 .parse-options input[type="checkbox"] { flex: none; min-width: 0; width: 16px; height: 16px; padding: 0; }
+
+.star .icon {
+  background: currentColor;
+  mask: url("icons/star-24.svg") center / contain no-repeat;
+}
+.star[aria-pressed="true"] .icon { mask-image: url("icons/star-fill-24.svg"); }
+.star:not(:disabled):hover { color: #f5a623; }

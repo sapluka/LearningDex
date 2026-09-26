@@ -716,7 +716,6 @@ function setFavoriteState(favorited) {
   button.setAttribute("aria-pressed", String(Boolean(favorited)));
   button.title = favorited ? "取消收藏" : "收藏";
   button.setAttribute("aria-label", button.title);
-  button.querySelector("img").src = "icons/" + (favorited ? "star-fill-24" : "star-24") + ".svg";
 }
 
 async function refreshStar() {
