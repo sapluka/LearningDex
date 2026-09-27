@@ -55,6 +55,7 @@ function showPage(page) {
   const app = document.querySelector(".app");
   app.classList.toggle("is-welcome", page === "welcome");
   app.classList.toggle("is-browsing", isLibrary);
+  app.classList.toggle("is-working", isWorkspace);
   $("welcome").hidden = page !== "welcome";
   $("workspace").hidden = !isWorkspace;
   $("libraryPage").hidden = !isLibrary;
@@ -740,7 +741,7 @@ async function loadTask(id) {
   processingEl.hidden = true;
   showTitle(r.title || id);
   stateEl.textContent = "";
-  $("meta").textContent = "已打开保存的学习文档";
+  $("meta").textContent = "";
   documentView.setImageDir(r.taskdir || "");
   setMarkdown(mdForDisplay(r.doc));
   scheduleHighlights();

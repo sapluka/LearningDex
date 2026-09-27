@@ -180,6 +180,8 @@ body {
   position: relative;
 }
 
+.app.is-working .center { padding: 12px; }
+
 .welcome {
   flex: 1;
   display: flex;
@@ -285,7 +287,9 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  padding-bottom: 12px;
+  min-height: 40px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
   border-bottom: 1px solid #ededed;
 }
 
@@ -350,6 +354,8 @@ body {
   margin: 6px 2px;
 }
 
+.state:empty, .meta:empty { display: none; }
+
 .editor-shell {
   flex: 1;
   position: relative;
@@ -357,15 +363,26 @@ body {
   min-height: 0;
 }
 
-.editor {
+#editor {
   width: 100%;
   overflow: auto;
   background: #fff;
   border: 1px solid #ebebeb;
   border-radius: 12px;
-  padding: 4px 18px;
+  padding: 12px 14px;
   min-height: 0;
 }
+
+#editor .milkdown, #editor .ProseMirror {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+#editor .ProseMirror > :first-child { margin-top: 0; }
+#editor .ProseMirror > :last-child { margin-bottom: 0; }
 
 .editor img,
 .editor .ProseMirror img {
@@ -586,7 +603,7 @@ body {
   margin-bottom: 10px;
 }
 
-.editor,
+#editor,
 .chat-log,
 .task-list,
 .sidebar-tasks,
@@ -597,7 +614,7 @@ body {
   scrollbar-color: transparent transparent;
 }
 
-.editor:hover,
+#editor:hover,
 .chat-log:hover,
 .task-list:hover,
 .sidebar-tasks:hover,
@@ -607,7 +624,7 @@ body {
   scrollbar-color: #b2b2b2 transparent;
 }
 
-.editor::-webkit-scrollbar,
+#editor::-webkit-scrollbar,
 .chat-log::-webkit-scrollbar,
 .task-list::-webkit-scrollbar,
 .sidebar-tasks::-webkit-scrollbar,
@@ -618,7 +635,7 @@ body {
   height: 6px;
 }
 
-.editor::-webkit-scrollbar-thumb,
+#editor::-webkit-scrollbar-thumb,
 .chat-log::-webkit-scrollbar-thumb,
 .task-list::-webkit-scrollbar-thumb,
 .sidebar-tasks::-webkit-scrollbar-thumb,
@@ -629,7 +646,7 @@ body {
   border-radius: 6px;
 }
 
-.editor:hover::-webkit-scrollbar-thumb,
+#editor:hover::-webkit-scrollbar-thumb,
 .chat-log:hover::-webkit-scrollbar-thumb,
 .task-list:hover::-webkit-scrollbar-thumb,
 .sidebar-tasks:hover::-webkit-scrollbar-thumb,

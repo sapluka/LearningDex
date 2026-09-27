@@ -27,6 +27,10 @@ const server = http.createServer((req, res) => {
     page.on('dialog', dialog => dialog.accept());
     const origin = `http://127.0.0.1:${server.address().port}`;
     await page.route('**/*', route => route.request().url().startsWith(origin) ? route.continue() : route.abort());
+    await page.route(origin + '/layout-diagram.svg', route => route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#eee"/><path d="M100 700 800 100 1500 700Z" fill="none" stroke="#171717" stroke-width="8"/></svg>',
+    }));
     await page.addInitScript(() => {
       window.__tasks = ['A', 'B'].map(id => ({id, title: '课程 ' + id, has_doc: true, mtime: 0}));
       window.__directoryResults = {output: {ok: true, path: 'D:/测试/任务'}, pdf: {ok: true, path: 'D:/测试/PDF'}};
@@ -226,6 +230,57 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('#editor .ProseMirror').innerText(), original);
     await page.locator('#sidebarTasks button[data-task-id="A"]').click();
     assert.equal(await page.locator('#state').innerText(), '');
+    assert.equal(await page.locator('#meta').innerText(), '');
+    const assertDocumentLayout = async () => {
+      const center = await page.locator('.center').boundingBox();
+      const header = await page.locator('.doc-head').boundingBox();
+      const card = await page.locator('#editor').boundingBox();
+      const content = await page.locator('#editor .ProseMirror').boundingBox();
+      assert.equal(await page.locator('#state').isVisible(), false);
+      assert.equal(await page.locator('#meta').isVisible(), false);
+      assert.ok(card.x - center.x <= 12 && center.x + center.width - card.x - card.width <= 12);
+      assert.ok(card.width >= center.width - 24);
+      assert.ok(card.y - header.y - header.height <= 9);
+      assert.ok(content.x - card.x <= 16 && card.x + card.width - content.x - content.width <= 16);
+      assert.equal(await page.locator('#editor .ProseMirror').evaluate(node => getComputedStyle(node).borderTopWidth), '0px');
+    };
+    await assertDocumentLayout();
+    await page.setViewportSize({width: 1000, height: 750});
+    await assertDocumentLayout();
+    await page.evaluate(() => {
+      document.getElementById('state').textContent = '导出失败：测试提示';
+    });
+    assert.equal(await page.locator('#state').isVisible(), true);
+    await page.evaluate(() => { document.getElementById('state').textContent = ''; });
+    const layoutDoc = '# 阅读区检查\n\n用公式 $a+b$ 和图片说明内容。\n\n![示意图](' + origin + '/layout-diagram.svg)';
+    await page.evaluate(md => window._setMarkdown(md), layoutDoc);
+    await page.waitForFunction(() => document.querySelector('#editor img')?.naturalWidth === 1600);
+    const storedDoc = await page.evaluate(() => window._getMarkdown());
+    const assertContentFits = async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+      await page.waitForSelector('#mathLayer .math-item');
+      const image = await page.locator('#editor img[alt="示意图"]').boundingBox();
+      const content = await page.locator('#editor .ProseMirror').boundingBox();
+      assert.ok(image.width <= content.width && image.width > content.width - 1);
+      assert.ok(Math.abs(image.width / image.height - 1600 / 900) < 0.01);
+      assert.equal(await page.locator('#editor').evaluate(node => node.scrollWidth > node.clientWidth), false);
+      const formula = await page.evaluate(() => {
+        const node = document.querySelector('#editor .ProseMirror p').firstChild;
+        const start = node.textContent.indexOf('$a+b$');
+        const range = document.createRange();
+        range.setStart(node, start); range.setEnd(node, start + 5);
+        const text = range.getBoundingClientRect();
+        const overlay = document.querySelector('#mathLayer .math-item').getBoundingClientRect();
+        return {left: Math.abs(text.left - overlay.left), top: Math.abs(text.top - overlay.top)};
+      });
+      assert.ok(formula.left < 1 && formula.top < 1);
+      assert.equal(await page.evaluate(() => window._getMarkdown()), storedDoc);
+    };
+    await assertContentFits();
+    await snapshot('expanded-document-narrow');
+    await page.setViewportSize({width: 1440, height: 900});
+    await assertContentFits();
+    await page.evaluate(() => window._setMarkdown('# 课程 A\n\n正文'));
     assert.ok((await page.locator('#chatLog').innerText()).includes('回答 A'));
     assert.equal((await style('#chatLog .bub.user')).background, 'rgb(230, 240, 255)');
     assert.equal((await style('#chatLog .bub.ai mark')).background, 'rgb(255, 235, 59)');

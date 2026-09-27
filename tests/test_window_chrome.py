@@ -61,7 +61,7 @@ class WindowChromeTests(unittest.TestCase):
     def test_hidden_native_window_preserves_resizable_frame(self):
         import clr
         clr.AddReference("System.Windows.Forms")
-        from System.Windows.Forms import Form
+        from System.Windows.Forms import Form, FormWindowState
         form = Form()
         try:
             window = SimpleNamespace(native=form)
@@ -72,6 +72,10 @@ class WindowChromeTests(unittest.TestCase):
             self.assertEqual(updated & window_chrome.WS_CAPTION, 0)
             self.assertEqual(updated & 0x00040000, original & 0x00040000)
             self.assertEqual(updated & 0x000B0000, original & 0x000B0000)
+            for window_state in (FormWindowState.Maximized, FormWindowState.Normal):
+                form.WindowState = window_state
+                self.assertEqual(api.get_style(form.Handle.ToInt64(), window_chrome.GWL_STYLE) &
+                                 window_chrome.WS_CAPTION, 0)
             self.assertFalse(form.Visible)
         finally:
             form.Dispose()
