@@ -16,8 +16,10 @@ def complete(cfg, messages, **kw):
     return litellm.completion(model=full_model(cfg), messages=messages, **kw)
 
 
-def text(cfg, messages, **kw):
+def text(cfg, messages, response_meta=None, **kw):
     r = complete(cfg, messages, **kw)
+    if response_meta is not None:
+        response_meta["finish_reason"] = getattr(r.choices[0], "finish_reason", None)
     return r.choices[0].message.content
 
 

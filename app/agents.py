@@ -2,6 +2,8 @@ from . import llm
 from .skills import get as _get_skill
 from .shot_status import ShotError, validation_error
 from urllib.parse import urlsplit
+import json
+import re
 
 SYSTEM = (
     "你是视频学习助手。请将下方视频字幕整理成结构化的中文学习文档（markdown 格式），"
@@ -138,25 +140,51 @@ def answer_selection_stream(cfg, selection, question, doc=None):
     yield from llm.stream(cfg, msgs)
 
 
-def validate_frame(cfg, image_path, caption=""):
+def _frame_judgment(response):
+    answer = (response or "").strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*([\s\S]*?)\s*```", answer, re.IGNORECASE)
+    if fenced:
+        answer = fenced.group(1)
+    try:
+        result = json.loads(answer)
+        if isinstance(result, dict) and type(result.get("valid")) is bool:
+            return result["valid"], str(result.get("reason") or "")[:300]
+    except (ValueError, TypeError):
+        pass
+    # 兼容旧格式，但不把“是否”“不是”等含混回答判为通过。
+    legacy = re.match(r"^(是|否|yes|no)(?:[\s，。,:：.!！]|$)", answer, re.IGNORECASE)
+    if legacy:
+        return legacy.group(1).lower() in ("是", "yes"), ""
+    raise ShotError("validation_response", {"response": answer[:500]})
+
+
+def validate_frame(cfg, image_path, caption="", details=None):
     """把截图交给多模态模型判断是否有效。"""
     try:
         import base64
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
         msgs = [{"role": "user", "content": [
-            {"type": "text", "text": f"这是视频的一帧截图（意图：{caption}）。它是否清晰、与意图相关、能用于说明该知识点？只回答“是”或“否”。"},
+            {"type": "text", "text": f"这是视频的一帧截图，拟说明：{caption}。请判断关键内容是否清晰、画面是否包含说明这个知识点所需的元素。"
+                "截图用于辅助讲解，不要求所有概念或结论都写在画面上，但核心视觉信息必须存在。"
+                '只输出 JSON，例如：{"valid": true, "reason": "关键内容清晰"}。不符合条件时 valid 为 false。'
+                '不要输出推理过程或额外文字。'},
             {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64}},
         ]}]
-        options = {"max_tokens": 1024}
+        options = {"max_tokens": 1024, "timeout": 30}
         if urlsplit(cfg.get("base_url") or "").hostname == "api.deepseek.com":
-            options["extra_body"] = {"thinking": {"type": "disabled"}}
-        r = llm.text(cfg, msgs, **options)
+            if llm.full_model(cfg).startswith("anthropic/"):
+                # Anthropic 请求不会展开 extra_body，须作为顶层字段发送。
+                options.update(thinking={"type": "disabled"}, allowed_openai_params=["thinking"])
+            else:
+                options["extra_body"] = {"thinking": {"type": "disabled"}}
+        metadata = {}
+        r = llm.text(cfg, msgs, response_meta=metadata, **options)
     except Exception as error:
         raise validation_error(error) from error
-    answer = (r or "").strip()
-    if answer.startswith("是"):
-        return True
-    if answer.startswith("否"):
-        return False
-    raise ShotError("validation_response")
+    if details is not None:
+        details.update(metadata, response=(r or "")[:500])
+    valid, reason = _frame_judgment(r)
+    if details is not None:
+        details["reason"] = reason
+    return valid

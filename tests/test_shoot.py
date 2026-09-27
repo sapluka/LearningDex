@@ -47,8 +47,10 @@ class TestShotPrompt(unittest.TestCase):
             with open(frame, "wb") as file:
                 file.write(b"frame")
             with mock.patch.object(agents.llm, "text", return_value="是") as request:
-                self.assertTrue(agents.validate_frame({"protocol": "anthropic", "base_url": "https://api.deepseek.com/anthropic"}, frame))
-            self.assertEqual(request.call_args.kwargs["extra_body"], {"thinking": {"type": "disabled"}})
+                self.assertTrue(agents.validate_frame({"protocol": "anthropic", "base_url": "https://api.deepseek.com/anthropic",
+                    "model": "deepseek-v4-flash"}, frame))
+            self.assertEqual(request.call_args.kwargs["thinking"], {"type": "disabled"})
+            self.assertNotIn("extra_body", request.call_args.kwargs)
             self.assertGreaterEqual(request.call_args.kwargs["max_tokens"], 1024)
             with mock.patch.object(agents.llm, "text", return_value=None):
                 with self.assertRaisesRegex(ShotError, "未返回有效判断"):
@@ -65,7 +67,7 @@ class TestShotPrompt(unittest.TestCase):
         self.assertEqual(report["captured"], 0)
         self.assertIn("HTTP 412", report_note(report))
 
-    def test_capture_stops_after_validation_service_error(self):
+    def test_capture_retries_bad_response_and_continues_after_single_failure(self):
         def frame(video, sec, out):
             with open(out, "wb") as file:
                 file.write(b"frame")
@@ -74,13 +76,62 @@ class TestShotPrompt(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root, \
                 mock.patch.object(shoot, "_download_video", return_value="video"), \
                 mock.patch.object(shoot, "_frame", side_effect=frame), \
-                mock.patch.object(agents, "validate_frame", side_effect=ShotError("validation_response")) as validate:
+                mock.patch.object(agents, "validate_frame", side_effect=[ShotError("validation_response"),
+                    ShotError("validation_response"), True]) as validate:
             result = shoot.capture("![一](SHOT:01:30) ![二](SHOT:02:30)", "url", root, {}, report=report)
-            self.assertEqual(os.listdir(os.path.join(root, "images")), [])
+            self.assertEqual(os.listdir(os.path.join(root, "images")), ["shot_2.jpg"])
         self.assertNotIn("SHOT:", result)
-        validate.assert_called_once()
+        self.assertEqual(validate.call_count, 3)
         self.assertEqual(report["planned"], 2)
+        self.assertEqual((report["captured"], report["failed"], report["skipped"]), (1, 1, 0))
+        self.assertEqual([item["status"] for item in report["shots"]], ["failed", "accepted"])
+        self.assertEqual(len(report["shots"][0]["attempts"]), 2)
+        self.assertIn("images/shot_2.jpg", result)
         self.assertIn("未返回有效判断", report_note(report))
+
+    def test_structured_judgments_and_legacy_answers_are_unambiguous(self):
+        for response, expected in (('{"valid":true,"reason":"关键内容清晰"}', True),
+                ('```json\n{"valid": false, "reason": "无对应画面"}\n```', False),
+                ("是。内容清晰", True), ("否，与内容不相关", False), ("Yes", True)):
+            with self.subTest(response=response):
+                self.assertEqual(agents._frame_judgment(response)[0], expected)
+        for response in (None, "", "是否有关需要进一步确认", '{"valid":"false"}', "分析中"):
+            with self.subTest(response=response), self.assertRaises(ShotError):
+                agents._frame_judgment(response)
+
+    def test_validation_trace_records_reply_and_finish_reason(self):
+        with tempfile.TemporaryDirectory() as root:
+            frame = os.path.join(root, "frame.jpg")
+            with open(frame, "wb") as file:
+                file.write(b"frame")
+            metadata = {}
+            def respond(cfg, messages, response_meta=None, **options):
+                response_meta["finish_reason"] = "stop"
+                return '{"valid":true,"reason":"清晰"}'
+            with mock.patch.object(agents.llm, "text", side_effect=respond):
+                self.assertTrue(agents.validate_frame({}, frame, details=metadata))
+            self.assertEqual(metadata["finish_reason"], "stop")
+            self.assertEqual(metadata["reason"], "清晰")
+            self.assertIn('"valid":true', metadata["response"])
+
+    def test_persistent_service_errors_stop_after_three_images(self):
+        def frame(video, sec, out):
+            with open(out, "wb") as file:
+                file.write(b"frame")
+            return out
+        for code, calls, failed, skipped in (("validation_response", 6, 3, 1),
+                ("vision_unsupported", 1, 1, 3), ("validation_auth", 1, 1, 3)):
+            report = {}
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as root, \
+                    mock.patch.object(shoot, "_download_video", return_value="video"), \
+                    mock.patch.object(shoot, "_frame", side_effect=frame), \
+                    mock.patch.object(agents, "validate_frame", side_effect=ShotError(code)) as validate:
+                shoot.capture(" ".join(f"![图{i}](SHOT:0{i}:00)" for i in range(1, 5)),
+                    "url", root, {}, report=report)
+                self.assertEqual(validate.call_count, calls)
+                self.assertEqual(os.listdir(os.path.join(root, "images")), [])
+            self.assertEqual((report["failed"], report["skipped"]), (failed, skipped))
+            self.assertEqual(report["shots"][-1]["status"], "not_attempted")
 
     def test_download_refreshes_cookies_for_412_and_rejects_partial_files(self):
         with tempfile.TemporaryDirectory() as root:

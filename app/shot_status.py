@@ -9,14 +9,17 @@ MESSAGES = {
     "invalid_image": "截图图片格式无效，无法核验",
     "validation_failed": "图片核验请求失败，请检查模型连接和配置",
     "validation_response": "图片核验未返回有效判断",
+    "validation_auth": "图片核验认证失败，请检查 API 配置",
+    "validation_unavailable": "图片核验连续失败，已停止剩余截图",
     "rejected": "候选画面未通过清晰度或内容核验",
     "unexpected": "截图处理异常",
 }
 
 
 class ShotError(RuntimeError):
-    def __init__(self, code):
+    def __init__(self, code, details=None):
         self.code = code
+        self.details = details or {}
         super().__init__(MESSAGES[code])
 
 
@@ -29,6 +32,9 @@ def validation_error(error):
         return ShotError("vision_unsupported")
     if any(word in text for word in ("unsupported image", "invalid image", "image is invalid")):
         return ShotError("invalid_image")
+    if getattr(error, "status_code", None) in (401, 403) or any(word in text for word in
+            ("invalid api key", "authenticationerror", "permissiondeniederror")):
+        return ShotError("validation_auth")
     return ShotError("validation_failed")
 
 
@@ -40,4 +46,7 @@ def report_note(report):
     if not reasons:
         return ""
     captured = report.get("captured", 0)
-    return (f"已插入 {captured} 张截图，部分截图未完成：" if captured else "未生成视频截图：") + reasons
+    counts = ""
+    if "failed" in report and "skipped" in report:
+        counts = f"（计划 {report.get('planned', 0)} 张，失败 {report['failed']} 张，未尝试 {report['skipped']} 张）"
+    return (f"已插入 {captured} 张截图{counts}，部分截图未完成：" if captured else f"未生成视频截图{counts}：") + reasons

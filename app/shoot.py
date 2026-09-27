@@ -75,15 +75,44 @@ def _frame(video, sec, out):
     return out if os.path.exists(out) else None
 
 
+def _validate_candidate(cfg, path, caption, seconds, offset, attempts):
+    from . import agents
+    for retry in range(2):
+        detail = {"seconds": seconds, "offset": offset, "request": retry + 1}
+        attempts.append(detail)
+        try:
+            valid = agents.validate_frame(cfg, path, caption, details=detail)
+            detail["status"] = "accepted" if valid else "rejected"
+            return valid
+        except ShotError as error:
+            detail.update(error.details, status="error", code=error.code)
+            if retry == 0 and error.code in ("validation_response", "validation_failed"):
+                continue
+            raise
+
+
+def _finish_report(report):
+    for item in report["shots"]:
+        if item["status"] == "pending":
+            item["status"] = "not_attempted"
+    report["failed"] = sum(item["status"] == "failed" for item in report["shots"])
+    report["skipped"] = sum(item["status"] == "not_attempted" for item in report["shots"])
+    if report["failures"]:
+        report["status"] = "partial" if report["captured"] else "failed"
+
+
 def capture(md, url, taskdir, cfg, validate=True, report=None):
     shots = parse_shots(md)
     report = report if report is not None else {}
-    report.update(planned=len(shots), captured=0, failures=[], status="complete")
+    report.update(planned=len(shots), captured=0, failed=0, skipped=0, failures=[], status="complete",
+        shots=[{"index": idx, "caption": cap, "time": t, "status": "pending", "attempts": []}
+            for idx, (_, cap, t) in enumerate(shots, 1)])
     if not shots:
         report.update(status="failed", failures=[{"code": "no_plan"}])
         return md
     if not FFMPEG:
         report.update(status="failed", failures=[{"code": "ffmpeg_missing"}])
+        _finish_report(report)
         return SHOT_RE.sub("", md)
     imgdir = os.path.join(taskdir, "images")
     os.makedirs(imgdir, exist_ok=True)
@@ -94,23 +123,26 @@ def capture(md, url, taskdir, cfg, validate=True, report=None):
                 raise ShotError("download_failed")
         except ShotError as error:
             report.update(status="failed", failures=[{"code": error.code}])
+            _finish_report(report)
             return SHOT_RE.sub("", md)
+        consecutive_errors = 0
         for idx, (full, cap, t) in enumerate(shots, 1):
+            item = report["shots"][idx - 1]
             out = os.path.join(imgdir, f"shot_{idx}.jpg")
             failure = "frame_failed"
+            halted = False
             for offset in (0, 2, -2, 5):
-                if not _frame(video, _to_seconds(t) + offset, out):
+                seconds = max(0, _to_seconds(t) + offset)
+                if not _frame(video, seconds, out):
+                    item["attempts"].append({"seconds": seconds, "offset": offset, "status": "frame_failed"})
                     continue
                 if validate:
-                    from . import agents
                     try:
-                        valid = agents.validate_frame(cfg, out, cap)
+                        valid = _validate_candidate(cfg, out, cap, seconds, offset, item["attempts"])
                     except ShotError as error:
-                        if os.path.exists(out):
-                            os.remove(out)
-                        report.update(status="partial" if report["captured"] else "failed")
-                        report["failures"].append({"time": t, "code": error.code})
-                        return SHOT_RE.sub("", md)
+                        failure = error.code
+                        halted = failure in ("vision_unsupported", "validation_auth")
+                        break
                     if not valid:
                         failure = "rejected"
                         try:
@@ -118,16 +150,25 @@ def capture(md, url, taskdir, cfg, validate=True, report=None):
                         except OSError:
                             pass
                         continue
-                md = md.replace(full, f"![{cap}](images/shot_{idx}.jpg)")
+                md = md.replace(full, f"![{cap}](images/shot_{idx}.jpg)", 1)
                 report["captured"] += 1
+                item.update(status="accepted", image=f"images/shot_{idx}.jpg")
                 break
-            else:
+            if item["status"] != "accepted":
+                item.update(status="failed", code=failure)
                 report["failures"].append({"time": t, "code": failure})
                 if os.path.exists(out):
                     try:
                         os.remove(out)
                     except OSError:
                         pass
-    if report["failures"]:
-        report["status"] = "partial" if report["captured"] else "failed"
+                consecutive_errors = consecutive_errors + 1 if failure in ("validation_response", "validation_failed") else 0
+                if consecutive_errors >= 3:
+                    report["failures"].append({"code": "validation_unavailable"})
+                    halted = True
+            else:
+                consecutive_errors = 0
+            if halted:
+                break
+    _finish_report(report)
     return SHOT_RE.sub("", md)

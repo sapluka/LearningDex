@@ -32,6 +32,8 @@ B 站的 Cookie 初始化、字幕提取、音频和截图下载使用相同的�
 
 适配层直接继承 yt-dlp 的播放函数，仅在发送播放接口请求时调整来源，兼容新版新增的 `fatal` 参数，避免视频链接统一报 `unexpected keyword argument 'fatal'`。
 
+图片核验对异常回复有限重试；单张失败后继续后续图片，认证错误或连续服务异常才停止。任务 `screenshots.json` 记录每张图的处理状态、候选时间和判断回复，区分失败与未尝试。
+
 ## 测试
 
 - 后端：`python -m unittest discover -s tests -q`
