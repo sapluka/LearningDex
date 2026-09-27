@@ -27,6 +27,7 @@ CDN 指通过互联网提供前端代码的服务。本项目的界面代码已�
 - 后端：`python -m unittest discover -s tests -q`
 - 文档渲染：`node --test tests/*.mjs`
 - 界面：安装 Playwright 后运行 `node tests/test_interface.cjs`；使用 Edge 可设置环境变量 `LEARNINGDEX_BROWSER_CHANNEL=msedge`。该检查使用模拟后端，不调用模型或视频服务。
+- 图表：`node tests/test_diagram_interface.cjs`（同样需要 Playwright）。检查语法错误隔离、滚动边界、源码编辑与撤销、对话及 PDF 渲染；设置 `LEARNINGDEX_DIAGRAM_DOCUMENT` 可核验本地学习文档。
 
 ## 文档
 

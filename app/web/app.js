@@ -12,6 +12,7 @@ import { createTaskSidebar } from "./sidebar_tasks.mjs";
 import { reveal, cancelReveal, createSlogan, openModal } from "./page_motion.mjs";
 import { renderTaskCards } from "./task_library.mjs";
 import { initWindowChrome } from "./window_chrome.mjs";
+import { diagramPlugin, setDiagramDecorations } from "./diagram_plugin.mjs";
 
 let api = null;
 let editor = null;
@@ -21,7 +22,9 @@ const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const processingEl = $("processingMessage");
 const chatLog = $("chatLog");
-const documentView = createDocumentView(getMarkdown, chatLog);
+const documentView = createDocumentView(getMarkdown, chatLog, {setDiagramDecorations: (entries) => {
+  if (editor) editor.action(ctx => setDiagramDecorations(ctx.get(editorViewCtx), entries));
+}});
 const { scheduleHighlights, scheduleMermaid, renderHighlights, renderMermaids,
   renderMessageMermaid, buildPrintDoc, fixImages, mdForDisplay } = documentView;
 const chatBubbles = new Map();
@@ -190,6 +193,7 @@ async function init() {
     .use(commonmark)
     .use(gfm)
     .use(highlightPlugins)
+    .use(diagramPlugin)
     .use(history)
     .create();
   window.editor = editor;

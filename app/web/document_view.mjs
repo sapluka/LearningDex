@@ -1,6 +1,8 @@
 import { highlightMarkdown, SAFE_PRINT_URI } from "./render_utils.mjs";
+import { renderDiagram } from "./mermaid_renderer.mjs";
+import { createEditorDiagrams } from "./editor_diagrams.mjs";
 
-export function createDocumentView(getMarkdown, chatLog) {
+export function createDocumentView(getMarkdown, chatLog, {setDiagramDecorations = () => {}} = {}) {
 const $ = (id) => document.getElementById(id);
 const mathLayer = $("mathLayer");
 let imgDir = "";
@@ -36,71 +38,26 @@ function mdForStorage(md) {
   return b ? (md || "").split(b + "/images/").join("images/") : (md || "");
 }
 
-let mermaidLib = null;
 const mmdLayer = $("mmdLayer");
-const mmdCache = {};
-async function ensureMermaid() {
-  if (!mermaidLib) {
-    const m = await import("mermaid");
-    mermaidLib = m.default || m;
-    mermaidLib.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
-  }
-  return mermaidLib;
-}
+const diagrams = createEditorDiagrams($("editor"), mmdLayer, renderDiagram, setDiagramDecorations);
+const renderMermaids = diagrams.render;
+const scheduleMermaid = diagrams.schedule;
 
 async function renderMessageMermaid(bubble) {
   const blocks = [...bubble.querySelectorAll("pre code.language-mermaid")];
   if (!blocks.length) return;
-  let lib;
-  try { lib = await ensureMermaid(); } catch (e) { return; }
-  for (const [index, block] of blocks.entries()) {
-    try {
-      const svg = (await lib.render("chat_mmd_" + Date.now() + "_" + index, block.textContent)).svg;
+  for (const block of blocks) {
+    const code = block.textContent;
+    const result = await renderDiagram(code);
+    if (!bubble.isConnected || block.textContent !== code || !block.isConnected) continue;
+    if (result.svg) {
       const diagram = document.createElement("div");
       diagram.className = "chat-mmd";
-      diagram.innerHTML = window.DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
+      diagram.innerHTML = result.svg;
       block.closest("pre").replaceWith(diagram);
-    } catch (e) { /* preserve source on invalid diagram */ }
+    } else block.closest("pre").setAttribute("data-mermaid-error", result.error);
   }
   chatLog.scrollTop = chatLog.scrollHeight;
-}
-
-async function renderMermaids() {
-  mmdLayer.innerHTML = "";
-  const editorEl = $("editor");
-  if (!editorEl || editorEl.closest("[hidden]")) return;
-  const pres = [];
-  editorEl.querySelectorAll("pre").forEach((p) => {
-    if (p.getAttribute("data-language") === "mermaid") pres.push(p);
-  });
-  if (!pres.length) return;
-  let lib;
-  try { lib = await ensureMermaid(); } catch (e) { return; }
-  const base = document.querySelector(".center").getBoundingClientRect();
-  for (let i = 0; i < pres.length; i++) {
-    const code = pres[i].querySelector("code").textContent;
-    let svg = mmdCache[code];
-    if (!svg) {
-      try { svg = (await lib.render("mmd_" + Date.now() + "_" + i, code)).svg; mmdCache[code] = svg; }
-      catch (e) { continue; }
-    }
-    const r = pres[i].getBoundingClientRect();
-    const d = document.createElement("div");
-    d.className = "mmd-item";
-    d.style.left = (r.left - base.left) + "px";
-    d.style.top = (r.top - base.top) + "px";
-    d.style.width = r.width + "px";
-    d.style.minHeight = r.height + "px";
-    d.innerHTML = svg;
-    mmdLayer.appendChild(d);
-  }
-}
-
-let mmdScheduled = false;
-function scheduleMermaid() {
-  if (mmdScheduled) return;
-  mmdScheduled = true;
-  requestAnimationFrame(() => { mmdScheduled = false; renderMermaids(); });
 }
 
 const MMD_BLOCK_RE = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
@@ -122,15 +79,10 @@ async function buildPrintDoc() {
     { USE_PROFILES: { html: true }, ALLOWED_URI_REGEXP: SAFE_PRINT_URI });
   const blocks = [...html.matchAll(MMD_BLOCK_RE)];
   if (blocks.length) {
-    let lib = null;
-    try { lib = await ensureMermaid(); } catch (e) { lib = null; }
     for (let i = 0; i < blocks.length; i++) {
-      let svg = "";
-      if (lib) {
-        try { svg = (await lib.render("pmmd_" + Date.now() + "_" + i, decodeEntities(blocks[i][1]))).svg; }
-        catch (e) { svg = ""; }
-      }
-      html = html.replace(blocks[i][0], () => (svg ? '<div class="print-mmd">' + svg + "</div>" : blocks[i][0]));
+      const {svg} = await renderDiagram(decodeEntities(blocks[i][1]));
+      html = html.replace(blocks[i][0], () => (svg ? '<div class="print-mmd">' + svg + "</div>" :
+        blocks[i][0] + '<p class="diagram-error">图表无法显示，原文已保留。</p>'));
     }
   }
   root.innerHTML = html;
@@ -185,7 +137,7 @@ function renderEditorMath() {
   return {
     setImageDir(dir) { imgDir = dir || ""; },
     clearLayers() {
-      mmdLayer.innerHTML = "";
+      diagrams.clear();
       mathLayer.innerHTML = "";
     },
     scheduleHighlights, scheduleMermaid, renderHighlights, renderMermaids,

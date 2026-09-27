@@ -726,6 +726,8 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 33;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .math-layer {
@@ -744,12 +746,22 @@ body {
 .mmd-item {
   position: absolute;
   background: #fff;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
 }
 
 .mmd-item svg {
   max-width: 100%;
+  height: auto;
+  display: block;
 }
+
+#editor pre { max-width: 100%; overflow: auto; }
+#editor pre[data-mermaid-preview] { padding: 0; overflow: hidden; }
+#editor pre[data-mermaid-preview] code { visibility: hidden; }
+pre[data-mermaid-error]::after { content: "图表无法显示，原文已保留。"; display: block; margin-top: 8px; font: 13px "Segoe UI", "Microsoft YaHei", sans-serif; color: #525252; white-space: normal; }
+.diagram-error { font-size: 13px; color: #525252; }
 
 .editor mark.editor-highlight {
   background: #ffeb3b;
