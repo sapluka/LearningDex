@@ -9,7 +9,7 @@ import uuid
 import yt_dlp
 from faster_whisper import WhisperModel
 
-from . import subtitle
+from . import bilibili, subtitle
 
 
 def _preload_cuda_dlls():
@@ -104,18 +104,20 @@ def download_audio(url, cfg=None):
         "noplaylist": True,
     }
     if "bilibili" in url.lower():
-        opts["cookiefile"] = subtitle._cookie_source()
+        opts.update(subtitle.bilibili_options())
     try:
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
+                bilibili.configure(ydl)
                 ydl.download([url])
         except Exception as e:
             if "412" not in str(e):
                 raise
             subtitle._refresh()
             time.sleep(2)
-            opts["cookiefile"] = subtitle._cookie_source()
+            opts.update(subtitle.bilibili_options())
             with yt_dlp.YoutubeDL(opts) as ydl:
+                bilibili.configure(ydl)
                 ydl.download([url])
         if not os.path.isfile(temporary) or os.path.getsize(temporary) == 0:
             raise RuntimeError("音频下载未生成有效文件")

@@ -17,6 +17,9 @@ class _Download:
     def __exit__(self, *_):
         pass
 
+    def add_info_extractor(self, _extractor):
+        pass
+
     def download(self, _urls):
         with open(self.path, "wb") as output:
             output.write(b"audio")

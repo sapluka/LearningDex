@@ -24,6 +24,8 @@ CDN 指通过互联网提供前端代码的服务。本项目的界面代码已�
 
 截图未完成时会显示具体原因，重新打开任务时保留该提示。任务目录保存 `segments.json`（字幕时间戳）、`screenshot_plan.md`（截图处理前的笔记）和 `screenshots.json`（计划数、插入数及失败原因）。图片核验使用足够的输出预算；调用 DeepSeek 官方接口时关闭这一步的思考模式，避免只有思考内容而没有判断。
 
+B 站的 Cookie 初始化、字幕提取、音频和截图下载使用相同的浏览器标识（User-Agent）；播放接口使用 B 站首页作为来源页面（Referer），修复视频页来源标记触发的 HTTP 412。仍保留原有签名、登录及格式处理。
+
 ## 测试
 
 - 后端：`python -m unittest discover -s tests -q`

@@ -11,6 +11,8 @@ import urllib.request
 
 import yt_dlp
 
+from . import bilibili
+
 LANGS = ("zh-Hans", "zh-CN", "zh", "en")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 
@@ -145,6 +147,11 @@ def _cookie_source():
     _jar_ensure()
     _buivid_boost()
     return _cookie_path
+
+
+def bilibili_options():
+    """Cookie 与后续请求使用相同的浏览器标识。"""
+    return {"cookiefile": _cookie_source(), "http_headers": {"User-Agent": UA}}
 
 
 def _pick(subs):
@@ -305,6 +312,7 @@ def _segments_from_json(obj):
 
 def _extract(url, opts):
     with yt_dlp.YoutubeDL(opts) as ydl:
+        bilibili.configure(ydl)
         info = ydl.extract_info(url, download=False)
     sub = _pick(info.get("subtitles")) or _pick(info.get("automatic_captions"))
     segs = []
@@ -335,7 +343,7 @@ def extract(url, cfg=None):
         opts = {"skip_download": True, "quiet": True, "noplaylist": True}
         host = urllib.parse.urlparse(url).netloc.lower()
         if "bilibili" in host:
-            opts["cookiefile"] = _cookie_source()
+            opts.update(bilibili_options())
         try:
             return _extract(url, opts)
         except Exception as e:

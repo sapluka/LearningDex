@@ -7,7 +7,7 @@ import time
 
 import yt_dlp
 
-from . import subtitle
+from . import bilibili, subtitle
 from .shot_status import ShotError
 
 try:
@@ -42,17 +42,18 @@ def _download_video(url, cfg, tmpdir):
         "socket_timeout": 30,
     }
     if "bilibili" in url.lower():
-        opts["cookiefile"] = subtitle._cookie_source()
+        opts.update(subtitle.bilibili_options())
     for attempt in range(2):
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
+                bilibili.configure(ydl)
                 ydl.download([url])
             break
         except Exception as error:
             if "412" in str(error) and attempt == 0 and "bilibili" in url.lower():
                 subtitle._refresh()
                 time.sleep(2)
-                opts["cookiefile"] = subtitle._cookie_source()
+                opts.update(subtitle.bilibili_options())
                 continue
             raise ShotError("download_rejected" if "412" in str(error) else "download_failed") from error
     files = [file for file in glob.glob(os.path.join(tmpdir, "source.*"))
