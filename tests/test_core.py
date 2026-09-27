@@ -78,6 +78,17 @@ class TestAgents(unittest.TestCase):
         self.assertNotIn("这个东西现在知道它存在就够了", prompt)
         self.assertNotIn("允许废话", prompt)
 
+    def test_custom_lecture_still_receives_safe_diagram_syntax(self):
+        info = {"title": "流程", "subtitle": "先完成写作，再检查结果。"}
+        with mock.patch.object(agents, "lecture_system", return_value="自定义讲解要求"), \
+                mock.patch.object(agents.llm, "text", return_value="笔记") as request:
+            self.assertEqual(agents.summarize({}, info), "笔记")
+        system, user = request.call_args.args[1]
+        self.assertIn("自定义讲解要求", system["content"])
+        self.assertIn("节点 ID 使用英文字母和数字", system["content"])
+        self.assertIn('A["写作完成<br/>#quot;检查结果#quot;"] --> B["下一步"]', system["content"])
+        self.assertIn(info["subtitle"], user["content"])
+
 
 class TestConfig(unittest.TestCase):
     def test_load_has_defaults(self):
