@@ -29,9 +29,15 @@ const server = http.createServer((req, res) => {
     await page.route('**/*', route => route.request().url().startsWith(origin) ? route.continue() : route.abort());
     await page.addInitScript(() => {
       window.__tasks = ['A', 'B'].map(id => ({id, title: '课程 ' + id, has_doc: true, mtime: 0}));
+      window.__directoryResults = {output: {ok: true, path: 'D:/测试/任务'}, pdf: {ok: true, path: 'D:/测试/PDF'}};
       window.pywebview = { api: {
         load_config: async () => ({}), reset_context: async () => ({ok: true}),
         save_config: async cfg => { window.__settings = cfg; return {ok: true}; },
+        choose_output_dir: async () => {
+          if (window.__directoryError) throw new Error('目录选择不可用');
+          return window.__directoryResults.output;
+        },
+        choose_pdf_output_dir: async () => window.__directoryResults.pdf,
         list_skills: async () => ({ok: true, skills: []}),
         list_favorites: async () => ({ok: true, favorites: window.__tasks.slice(0, 1)}),
         toggle_favorite: async () => ({ok: true, favorited: true}),
@@ -95,6 +101,7 @@ const server = http.createServer((req, res) => {
     assert.equal((await style('.chat-empty')).color, 'rgb(82, 82, 82)');
     await page.mouse.move(1200, 100);
     await page.locator('#settingsBtn').click();
+    await page.locator('#settings .modal-box').evaluate(node => Promise.all(node.getAnimations().map(a => a.finished.catch(() => {}))));
     assert.equal(await page.locator('#settings #whisperModel, #settings #proofread, #settings #skillBtn').count(), 3);
     assert.equal(await page.locator('#startBtn').count(), 0);
     assert.deepEqual(await page.locator('#settings .row.right button').allTextContents(), ['保存', '关闭']);
@@ -108,9 +115,39 @@ const server = http.createServer((req, res) => {
     await page.locator('#skillBtn').click();
     await page.waitForSelector('#skillsModal:not([hidden])');
     await page.locator('#skillClose').click();
+    assert.equal(await page.locator('#outputDir').getAttribute('placeholder'), '中间文件的存储目录');
+    await page.locator('#chooseOutputDir').click();
+    assert.equal(await page.locator('#outputDir').inputValue(), 'D:/测试/任务');
+    await page.locator('#choosePdfDir').click();
+    assert.equal(await page.locator('#pdfOutputDir').inputValue(), 'D:/测试/PDF');
+    assert.equal(await page.evaluate(() => window.__settings), undefined);
+    await page.evaluate(() => {
+      window.__directoryResults.output = {ok: true, path: ''};
+      window.__directoryResults.pdf = {ok: true, path: ''};
+    });
+    await page.locator('#chooseOutputDir').click();
+    await page.locator('#choosePdfDir').click();
+    assert.equal(await page.locator('#outputDir').inputValue(), 'D:/测试/任务');
+    assert.equal(await page.locator('#pdfOutputDir').inputValue(), 'D:/测试/PDF');
+    await page.evaluate(() => { window.__directoryResults.output = {ok: false, error: '无法打开目录选择'}; });
+    await page.locator('#chooseOutputDir').click();
+    await page.waitForFunction(() => document.getElementById('setMsg').textContent.includes('无法打开目录选择'));
+    assert.equal(await page.locator('#outputDir').inputValue(), 'D:/测试/任务');
+    await page.evaluate(() => { window.__directoryError = true; });
+    await page.locator('#chooseOutputDir').click();
+    await page.waitForFunction(() => document.getElementById('setMsg').textContent.includes('目录选择不可用'));
+    await page.evaluate(() => {
+      window.__directoryError = false;
+      window.__directoryResults.output = {ok: true, path: 'D:/测试/任务'};
+    });
+    await page.locator('#chooseOutputDir').click();
+    assert.equal(await page.locator('#setMsg').textContent(), '');
+    await snapshot('settings-directories');
     await page.locator('#whisperModel').selectOption('small');
     await page.locator('#saveBtn').click();
     assert.equal(await page.evaluate(() => window.__settings.whisper_model), 'small');
+    assert.equal(await page.evaluate(() => window.__settings.output_dir), 'D:/测试/任务');
+    assert.equal(await page.evaluate(() => window.__settings.pdf_output_dir), 'D:/测试/PDF');
     await page.locator('#closeSettings').click();
     await page.locator('#sampleCards button').first().click();
     assert.equal(await page.locator('.chat').isVisible(), true);

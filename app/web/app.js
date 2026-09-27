@@ -226,11 +226,8 @@ async function init() {
   $("settingsBtn").onclick = () => openModal($("settings"));
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
-  $("choosePdfDir").onclick = async () => {
-    const result = await api.choose_pdf_output_dir();
-    if (result.ok && result.path) $("pdfOutputDir").value = result.path;
-    else if (!result.ok) $("setMsg").textContent = "选择目录失败：" + result.error;
-  };
+  $("chooseOutputDir").onclick = () => chooseDirectory("outputDir", "choose_output_dir");
+  $("choosePdfDir").onclick = () => chooseDirectory("pdfOutputDir", "choose_pdf_output_dir");
   $("testBtn").onclick = testConnection;
   $("skillBtn").onclick = openSkills;
   $("skillClose").onclick = () => ($("skillsModal").hidden = true);
@@ -783,6 +780,19 @@ async function toggleCurrentFav() {
   if (!id) return;
   const r = await api.toggle_favorite(id, $("docTitle").textContent);
   if (r.ok) setFavoriteState(r.favorited);
+}
+
+async function chooseDirectory(inputId, method) {
+  try {
+    const result = await api[method]();
+    if (result.ok && result.path) {
+      $(inputId).value = result.path;
+      $("setMsg").textContent = "";
+    }
+    else if (!result.ok) $("setMsg").textContent = "选择目录失败：" + result.error;
+  } catch (error) {
+    $("setMsg").textContent = "选择目录失败：" + (error?.message || String(error));
+  }
 }
 
 async function saveSettings() {

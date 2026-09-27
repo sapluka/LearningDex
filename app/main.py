@@ -141,14 +141,22 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def choose_pdf_output_dir(self):
+    def _choose_directory(self, directory):
         try:
-            path = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            directory = os.path.abspath(os.path.expanduser(directory))
+            path = webview.windows[0].create_file_dialog(
+                webview.FOLDER_DIALOG, directory=directory if os.path.isdir(directory) else "")
             if isinstance(path, (list, tuple)):
                 path = path[0] if path else ""
             return {"ok": True, "path": path or ""}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def choose_output_dir(self):
+        return self._choose_directory(_state_dir(self.cfg))
+
+    def choose_pdf_output_dir(self):
+        return self._choose_directory(self.cfg.get("pdf_output_dir") or _state_dir(self.cfg))
 
     def save_draft(self, content):
         self.update_doc(content)
