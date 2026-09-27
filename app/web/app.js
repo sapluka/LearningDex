@@ -235,6 +235,12 @@ async function init() {
   $("exportMdBtn").onclick = exportMarkdown;
   $("githubBtn").onclick = () => openLink("https://github.com/sapluka/LearningDex");
   $("settingsBtn").onclick = () => openModal($("settings"));
+  $("settings").addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-external-link]");
+    if (!link) return;
+    event.preventDefault();
+    openLink(link.href);
+  });
   $("closeSettings").onclick = () => ($("settings").hidden = true);
   $("saveBtn").onclick = saveSettings;
   $("chooseOutputDir").onclick = () => chooseDirectory("outputDir", "choose_output_dir");

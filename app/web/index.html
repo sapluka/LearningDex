@@ -121,8 +121,9 @@
 
   <!-- 设置弹层 -->
   <div id="settings" class="modal" hidden>
-    <div class="modal-box">
-      <h2>设置</h2>
+    <div class="modal-box settings-box" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">设置</h2>
+      <div class="settings-content">
       <div class="row">
         <label>协议</label>
         <select id="protocol">
@@ -140,12 +141,39 @@
         <label>模型</label>
         <input id="model" placeholder="gpt-4o / claude-3-5...">
       </div>
-      <div class="row">
-        <label>B站 SESSDATA</label>
-        <input id="sessdata" type="password" placeholder="可选">
-        <label>cookies.txt</label>
-        <input id="cookiesFile" placeholder="路径（可选）">
-      </div>
+      <section class="bili-settings" aria-labelledby="biliSettingsTitle">
+        <h3 id="biliSettingsTitle">B 站登录信息 <span>可选</span></h3>
+        <p class="settings-help" id="biliLoginHelp">通常可以留空。SESSDATA 是 B 站登录凭据；Cookie 文件保存浏览器在 B 站的访问和登录状态。视频需要登录，或下载提示需要登录信息时，再填写任意一项；有效的 Cookie 文件优先使用。</p>
+        <div class="bili-fields">
+          <div class="row">
+            <label for="sessdata">登录凭据（SESSDATA）</label>
+            <input id="sessdata" type="password" placeholder="粘贴 SESSDATA 的值（可选）" aria-describedby="biliLoginHelp sessdataHelp">
+          </div>
+          <div class="row">
+            <label for="cookiesFile">Cookie 文件（cookies.txt）</label>
+            <input id="cookiesFile" placeholder="导出的 cookies.txt 完整路径（可选）" aria-describedby="biliLoginHelp cookiesHelp">
+          </div>
+        </div>
+        <div class="bili-help-columns settings-help">
+          <div id="sessdataHelp">
+            <h4>获取 SESSDATA · Chrome / Edge</h4>
+            <ol>
+              <li>在浏览器打开 B 站，并登录自己的账号。</li>
+              <li>按 F12，进入「应用程序 / Application」→「存储 / Storage」→「Cookies」，选择 B 站域名。</li>
+              <li>找到名称为 <code>SESSDATA</code> 的一行，复制「值 / Value」列，粘贴到上面的登录凭据框。</li>
+            </ol>
+          </div>
+          <div id="cookiesHelp">
+            <h4>获取 cookies.txt · Chrome / Edge</h4>
+            <ol>
+              <li>安装 Cookie 导出扩展，例如 <a href="https://github.com/kairi003/Get-cookies.txt-LOCALLY" data-external-link>Get cookies.txt LOCALLY</a>，然后打开并登录 B 站。</li>
+              <li>在扩展中选择仅导出当前 B 站的 Cookie，以 Netscape 格式保存为 <code>cookies.txt</code>；不要导出所有网站。</li>
+              <li>在文件资源管理器中右键复制该文件的完整路径（Windows 10 可按住 Shift 再右键），粘贴到上面的文件框，去掉两端引号。</li>
+            </ol>
+          </div>
+        </div>
+        <p class="settings-help credential-note">这些信息代表你的登录状态，请勿公开或发给他人。失效后重新获取；填写后点击「保存」，本次运行使用。</p>
+      </section>
       <div class="row">
         <label for="outputDir">存储目录</label>
         <input id="outputDir" placeholder="中间文件的存储目录">
@@ -172,7 +200,8 @@
         <button id="testBtn">检验连接</button>
         <span id="setMsg" class="msg"></span>
       </div>
-      <div class="row right">
+      </div>
+      <div class="row right settings-footer">
         <button class="btn primary" id="saveBtn">保存</button>
         <button class="btn primary" id="closeSettings">关闭</button>
       </div>

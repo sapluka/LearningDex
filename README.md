@@ -18,6 +18,8 @@ CDN 指通过互联网提供前端代码的服务。本项目的界面代码已�
 
 转写模型、字幕核验和 Skill 管理位于设置；首页输入视频链接后按回车解析。设置底部依次为「保存」「关闭」。存储目录和 PDF 输出目录均可选择；存储目录包含字幕、截图、学习文档、草稿及任务对话，默认使用 `output/`。
 
+设置中的 B 站登录信息可以先留空；输入框下方提供 Chrome/Edge 获取 SESSDATA 和导出 B 站 cookies.txt 的步骤。设置内容可滚动，保存与关闭始终可见。说明参考 [Chrome Cookie 面板](https://developer.chrome.com/docs/devtools/application/cookies)及 [yt-dlp Cookie 文档](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)。
+
 界面以黑白灰为主，用户消息浅蓝、高亮亮黄、收藏橙黄，学习文档正文 15px。图标使用本地 GitHub Octicons（来源和许可见 `app/web/icons/`）。
 
 「新解析」使用蓝至粉紫渐变。首页、任务页与收藏页约 0.5 秒向上淡入，首页说明逐字显示；设置和 Skill 弹层使用协调的淡入效果。系统启用减少动画时直接显示内容。

@@ -559,6 +559,28 @@ body {
   margin: 0 0 16px;
 }
 
+.settings-box { width: 900px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; }
+.settings-box h2 { flex: none; }
+.settings-content { min-height: 0; overflow-y: auto; padding: 2px 6px 0 2px; }
+.settings-footer { flex: none; padding-top: 12px; margin: 12px 0 0; border-top: 1px solid #e7e7e7; }
+.bili-settings { margin: 18px 0; padding: 16px; background: #fafafa; border: 1px solid #e7e7e7; border-radius: 10px; }
+.bili-settings h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.bili-settings h3 span { margin-left: 6px; font-size: 12px; font-weight: 400; color: #525252; }
+.settings-help { margin: 0 0 12px; font-size: 12px; line-height: 1.7; color: #525252; }
+.bili-fields, .bili-help-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.bili-fields .row { display: block; }
+.bili-fields label { display: block; margin-bottom: 6px; }
+.bili-fields input { width: 100%; min-width: 0; }
+.bili-help-columns h4 { margin: 0 0 6px; color: #262626; font-size: 12px; font-weight: 600; }
+.bili-help-columns ol { margin: 0; padding-left: 18px; }
+.bili-help-columns li + li { margin-top: 4px; }
+.settings-help a { color: #262626; text-decoration: underline; }
+.credential-note { margin: 12px 0 0; }
+@media (max-width: 650px) {
+  .settings-box { padding: 18px 16px; }
+  .bili-fields, .bili-help-columns { grid-template-columns: 1fr; gap: 12px; }
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -608,6 +630,7 @@ body {
 .task-list,
 .sidebar-tasks,
 .modal-box,
+.settings-content,
 .mmd-item,
 .bub.ai pre {
   scrollbar-width: thin;
@@ -619,6 +642,7 @@ body {
 .task-list:hover,
 .sidebar-tasks:hover,
 .modal-box:hover,
+.settings-content:hover,
 .mmd-item:hover,
 .bub.ai pre:hover {
   scrollbar-color: #b2b2b2 transparent;
@@ -629,6 +653,7 @@ body {
 .task-list::-webkit-scrollbar,
 .sidebar-tasks::-webkit-scrollbar,
 .modal-box::-webkit-scrollbar,
+.settings-content::-webkit-scrollbar,
 .mmd-item::-webkit-scrollbar,
 .bub.ai pre::-webkit-scrollbar {
   width: 6px;
@@ -640,6 +665,7 @@ body {
 .task-list::-webkit-scrollbar-thumb,
 .sidebar-tasks::-webkit-scrollbar-thumb,
 .modal-box::-webkit-scrollbar-thumb,
+.settings-content::-webkit-scrollbar-thumb,
 .mmd-item::-webkit-scrollbar-thumb,
 .bub.ai pre::-webkit-scrollbar-thumb {
   background: transparent;
@@ -651,6 +677,7 @@ body {
 .task-list:hover::-webkit-scrollbar-thumb,
 .sidebar-tasks:hover::-webkit-scrollbar-thumb,
 .modal-box:hover::-webkit-scrollbar-thumb,
+.settings-content:hover::-webkit-scrollbar-thumb,
 .mmd-item:hover::-webkit-scrollbar-thumb,
 .bub.ai pre:hover::-webkit-scrollbar-thumb {
   background: #b2b2b2;
