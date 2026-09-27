@@ -13,11 +13,14 @@ class WindowTests(unittest.TestCase):
         window.events = SimpleNamespace(**{name: Event(window, True) for name in
                                            ("before_show", "loaded", "maximized", "restored")})
         with patch.object(main, "Api"), patch.object(main.web_server, "create_app"), \
+                patch.object(window_chrome, "initialize") as initialize, \
                 patch.object(main.webview, "create_window", return_value=window) as create, \
-                patch.object(main.webview, "start", side_effect=window.events.before_show.set):
+                patch.object(main.webview, "start", side_effect=lambda **kwargs: window.events.before_show.set()) as start:
             main.main()
         self.assertEqual(create.call_args.args[0], "LearningDex")
-        self.assertFalse(window.native.ShowIcon)
+        initialize.assert_called_once()
+        start.assert_called_once_with(icon=window_chrome.ICON_PATH)
+        self.assertTrue(window.native.ShowIcon)
         self.assertNotIn("frameless", create.call_args.kwargs)
 
     def test_other_window_backends_need_no_icon_property(self):

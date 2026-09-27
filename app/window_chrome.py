@@ -3,10 +3,28 @@ import json
 import sys
 from ctypes import wintypes
 from functools import lru_cache
+from pathlib import Path
 
 WS_CAPTION = 0x00C00000
 GWL_STYLE = -16
 SWP_FRAMECHANGED = 0x20
+APP_ID = "LearningDex.Desktop"
+ICON_PATH = str(Path(__file__).resolve().parent / "assets" / "learndex.ico")
+
+
+@lru_cache(maxsize=1)
+def _shell32():
+    api = ctypes.WinDLL("shell32", use_last_error=True)
+    api.SetCurrentProcessExplicitAppUserModelID.argtypes = [wintypes.LPCWSTR]
+    api.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.c_long
+    return api
+
+
+def initialize():
+    if sys.platform == "win32":
+        result = _shell32().SetCurrentProcessExplicitAppUserModelID(APP_ID)
+        if result < 0:
+            raise OSError("无法设置 LearningDex 的 Windows 应用标识")
 
 
 @lru_cache(maxsize=1)
@@ -36,7 +54,8 @@ def _win32():
 def prepare(window):
     native = window.native
     if hasattr(native, "ShowIcon"):
-        native.ShowIcon = False
+        # 图标供任务栏使用；顶部仍由自定义标题栏绘制。
+        native.ShowIcon = True
     if sys.platform != "win32" or not hasattr(native, "Handle"):
         return
     api = _win32()

@@ -16,6 +16,8 @@ CDN 指通过互联网提供前端代码的服务。本项目的界面代码已�
 
 窗口与侧栏名称为 LearningDex，顶部标题居中并隐藏 Python 图标；支持窗口拖动、缩放及最小化、最大化、关闭，双击顶部栏切换最大化/还原。文档阅读区缩小外围留白，打开历史任务直接展示文档。
 
+Windows 任务栏使用本地黑底白字 LD 图标和独立应用标识。图标位于 `app/assets/`；修改图标时，可在有 Pillow 和 Segoe UI Bold 字体的环境中运行 `python tools/build_icon.py` 生成多尺寸 ICO。
+
 转写模型、字幕核验和 Skill 管理位于设置；首页输入视频链接后按回车解析。设置底部依次为「保存」「关闭」。存储目录和 PDF 输出目录均可选择；存储目录包含字幕、截图、学习文档、草稿及任务对话，默认使用 `output/`。
 
 设置中的 B 站登录信息可以先留空；输入框下方提供 Chrome/Edge 获取 SESSDATA 和导出 B 站 cookies.txt 的步骤。设置内容可滚动，保存与关闭始终可见。说明参考 [Chrome Cookie 面板](https://developer.chrome.com/docs/devtools/application/cookies)及 [yt-dlp Cookie 文档](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)。

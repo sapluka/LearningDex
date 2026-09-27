@@ -515,6 +515,7 @@ class Api:
 
 
 def main():
+    window_chrome.initialize()
     api = Api()
     window = webview.create_window(
         "LearningDex",
@@ -527,7 +528,7 @@ def main():
     window.events.loaded += window_chrome.notify_state
     window.events.maximized += window_chrome.notify_state
     window.events.restored += window_chrome.notify_state
-    webview.start()
+    webview.start(icon=window_chrome.ICON_PATH)
 
 
 if __name__ == "__main__":
