@@ -57,6 +57,8 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => !!window.editor);
     await page.waitForSelector('#sampleCards button');
     await page.waitForSelector('#sidebarTasks button');
+    assert.equal(await page.title(), 'LearningDex');
+    assert.equal(await page.locator('.brand-name').innerText(), 'LearningDex');
     const assertWelcomeLayout = async () => {
       assert.equal(await page.locator('.chat').isVisible(), false);
       assert.equal(await page.locator('#panelDivider').isVisible(), false);

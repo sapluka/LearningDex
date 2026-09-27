@@ -469,15 +469,21 @@ class Api:
                 "taskdir": self.current_taskdir, "id": tid}
 
 
+def _prepare_window(window):
+    if hasattr(window.native, "ShowIcon"):
+        window.native.ShowIcon = False
+
+
 def main():
     api = Api()
-    webview.create_window(
-        "视频学习助手",
+    window = webview.create_window(
+        "LearningDex",
         web_server.create_app(WEB_DIR, lambda: _state_dir(api.cfg)),
         js_api=api,
         width=1000,
         height=750,
     )
+    window.events.before_show += _prepare_window
     webview.start()
 
 
