@@ -62,15 +62,25 @@ class TestAgents(unittest.TestCase):
         with mock.patch.object(agents, "_get_skill", return_value=None):
             self.assertIn("视频学习助手", agents.lecture_system())
 
-    def test_visual_lessons_request_multiple_distinct_frames(self):
+    def test_visual_lessons_request_only_needed_frames_between_complete_explanations(self):
         info = {"title": "纹理", "segments": [{"from": 12, "text": "对比两种采样效果"}]}
         with mock.patch.object(agents.llm, "text", return_value="笔记") as request:
             agents.summarize({}, info, screenshots=True)
         system, user = request.call_args.args[1]
-        self.assertIn("不同知识点", system["content"])
+        self.assertIn("连续几段完整讲解", system["content"])
+        self.assertIn("不要一句话配一张图", system["content"])
+        self.assertIn("同一组相关知识点尽量共用一张图", system["content"])
+        self.assertNotIn("为每个适合借助视频画面理解的不同知识点主动安排截图", system["content"])
         self.assertIn("视觉对比", system["content"])
         self.assertIn("SHOT:分:秒", system["content"])
         self.assertIn("[00:12] 对比两种采样效果", user["content"])
+
+    def test_screenshot_plan_requires_enabled_capture_and_timestamps(self):
+        for enabled, info in ((False, {"segments": [{"from": 12, "text": "示例"}]}),
+                (True, {"subtitle": "没有时间戳"})):
+            with self.subTest(enabled=enabled), mock.patch.object(agents.llm, "text", return_value="笔记") as request:
+                agents.summarize({}, info, screenshots=enabled)
+                self.assertNotIn("SHOT:分:秒", request.call_args.args[1][0]["content"])
 
     def test_default_lecture_skill_has_precise_positive_examples(self):
         prompt = agents.lecture_system()
