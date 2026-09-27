@@ -1,5 +1,7 @@
 from . import llm
 from .skills import get as _get_skill
+from .shot_status import ShotError, validation_error
+from urllib.parse import urlsplit
 
 SYSTEM = (
     "你是视频学习助手。请将下方视频字幕整理成结构化的中文学习文档（markdown 格式），"
@@ -144,7 +146,15 @@ def validate_frame(cfg, image_path, caption=""):
             {"type": "text", "text": f"这是视频的一帧截图（意图：{caption}）。它是否清晰、与意图相关、能用于说明该知识点？只回答“是”或“否”。"},
             {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64}},
         ]}]
-        r = llm.text(cfg, msgs, max_tokens=5)
-        return (r or "").strip().startswith("是")
-    except Exception:
+        options = {"max_tokens": 1024}
+        if urlsplit(cfg.get("base_url") or "").hostname == "api.deepseek.com":
+            options["extra_body"] = {"thinking": {"type": "disabled"}}
+        r = llm.text(cfg, msgs, **options)
+    except Exception as error:
+        raise validation_error(error) from error
+    answer = (r or "").strip()
+    if answer.startswith("是"):
+        return True
+    if answer.startswith("否"):
         return False
+    raise ShotError("validation_response")
