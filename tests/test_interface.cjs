@@ -86,6 +86,12 @@ const server = http.createServer((req, res) => {
     await page.locator('#windowTitlebar button[aria-label="关闭窗口"]').click();
     assert.deepEqual(await page.evaluate(() => window.__windowActions),
       ['minimize', 'toggle_maximize', 'toggle_maximize', 'toggle_maximize', 'toggle_maximize', 'close']);
+    await page.mouse.move(80, 16);
+    await page.mouse.down();
+    await page.mouse.move(95, 16);
+    await page.mouse.up();
+    await page.waitForFunction(() => window.__windowActions.includes('drag'));
+    assert.equal(await page.evaluate(() => window.__windowActions.filter(action => action === 'drag').length), 1);
     const assertWelcomeLayout = async () => {
       assert.equal(await page.locator('.chat').isVisible(), false);
       assert.equal(await page.locator('#panelDivider').isVisible(), false);

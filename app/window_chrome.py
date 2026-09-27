@@ -64,6 +64,22 @@ def notify_state(window):
                            json.dumps(state(window)))
 
 
+def _invoke_on_ui(native, callback):
+    from System import Action
+    native.Invoke(Action(callback))
+
+
+def _begin_drag(window):
+    api = _win32()
+    if api.GetAsyncKeyState(0x01) & 0x8000:
+        point = wintypes.POINT()
+        if not api.GetCursorPos(ctypes.byref(point)):
+            raise ctypes.WinError()
+        position = ctypes.c_int32((point.x & 0xFFFF) | ((point.y & 0xFFFF) << 16)).value
+        api.ReleaseCapture()
+        api.SendMessageW(window.native.Handle.ToInt64(), 0xA1, 2, position)
+
+
 def control(window, action):
     if action == "minimize":
         window.minimize()
@@ -75,14 +91,7 @@ def control(window, action):
     elif action == "close":
         window.destroy()
     elif action == "drag":
-        api = _win32()
-        if api.GetAsyncKeyState(0x01) & 0x8000:
-            point = wintypes.POINT()
-            if not api.GetCursorPos(ctypes.byref(point)):
-                raise ctypes.WinError()
-            position = ctypes.c_int32((point.x & 0xFFFF) | ((point.y & 0xFFFF) << 16)).value
-            api.ReleaseCapture()
-            api.SendMessageW(window.native.Handle.ToInt64(), 0xA1, 2, position)
+        _invoke_on_ui(window.native, lambda: _begin_drag(window))
     else:
         raise ValueError("未知窗口操作")
     return state(window)

@@ -38,10 +38,30 @@ class WindowChromeTests(unittest.TestCase):
     def test_late_drag_request_does_not_start_drag_after_mouse_release(self):
         api = Mock()
         api.GetAsyncKeyState.return_value = 0
-        with patch.object(window_chrome, "_win32", return_value=api):
+        with patch.object(window_chrome, "_win32", return_value=api), \
+                patch.object(window_chrome, "_invoke_on_ui", side_effect=lambda native, cb: cb()):
             window_chrome.control(SimpleNamespace(native=object()), "drag")
         api.ReleaseCapture.assert_not_called()
         api.SendMessageW.assert_not_called()
+
+    def test_drag_dispatches_on_ui_thread_with_current_cursor_coordinates(self):
+        api = Mock()
+        api.GetAsyncKeyState.return_value = 0x8000
+        def cursor(pointer):
+            pointer._obj.x = -100
+            pointer._obj.y = 200
+            return True
+        api.GetCursorPos.side_effect = cursor
+        window = SimpleNamespace(native=SimpleNamespace(Handle=Mock()))
+        window.native.Handle.ToInt64.return_value = 42
+        with patch.object(window_chrome, "_win32", return_value=api), \
+                patch.object(window_chrome, "_invoke_on_ui",
+                             side_effect=lambda native, cb: cb()) as invoke:
+            window_chrome.control(window, "drag")
+        invoke.assert_called_once()
+        self.assertIs(invoke.call_args.args[0], window.native)
+        api.ReleaseCapture.assert_called_once()
+        api.SendMessageW.assert_called_once_with(42, 0xA1, 2, (200 << 16) | (-100 & 0xFFFF))
 
     def test_caption_setup_failure_restores_original_style(self):
         api = Mock()
