@@ -65,7 +65,7 @@ const server = http.createServer((req, res) => {
         },
         load_task: async id => {
           if (window.__holdLoadTask === id) await new Promise(resolve => { window.__releaseTask = resolve; });
-          return {ok: true, id, title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]};
+          return {ok: true, id, note: window.__screenshotNote || '', title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]};
         },
       }};
     });
@@ -254,10 +254,13 @@ const server = http.createServer((req, res) => {
     await page.setViewportSize({width: 1000, height: 750});
     await assertDocumentLayout();
     await page.evaluate(() => {
-      document.getElementById('state').textContent = '导出失败：测试提示';
+      window.__screenshotNote = '未生成视频截图：视频网站拒绝截图视频下载（HTTP 412）';
     });
+    await page.locator('#sidebarTasks button[data-task-id="A"]').click();
+    assert.ok((await page.locator('#state').innerText()).includes('HTTP 412'));
     assert.equal(await page.locator('#state').isVisible(), true);
-    await page.evaluate(() => { document.getElementById('state').textContent = ''; });
+    await page.evaluate(() => { window.__screenshotNote = ''; });
+    await page.locator('#sidebarTasks button[data-task-id="A"]').click();
     const layoutDoc = '# 阅读区检查\n\n用公式 $a+b$ 和图片说明内容。\n\n![示意图](' + origin + '/layout-diagram.svg)';
     await page.evaluate(md => window._setMarkdown(md), layoutDoc);
     await page.waitForFunction(() => document.querySelector('#editor img')?.naturalWidth === 1600);

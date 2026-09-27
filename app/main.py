@@ -10,6 +10,7 @@ import uuid
 import webview
 
 from . import agents, config, llm, markdown_io, pdf_export, search, shoot, skills, subtitle, transcribe, web_server, window_chrome
+from .shot_status import report_note
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -70,7 +71,7 @@ def _task_title(taskdir, tid):
     return tid
 
 
-def _save_output(url, info, doc, cfg=None):
+def _save_output(url, info, doc, cfg=None, screenshot_plan=None):
     folder = os.path.join(_state_dir(cfg), _task_id(url))
     os.makedirs(folder, exist_ok=True)
     sub_path = os.path.join(folder, "subtitle.txt")
@@ -82,7 +83,23 @@ def _save_output(url, info, doc, cfg=None):
     with open(os.path.join(folder, "source.json"), "w", encoding="utf-8") as f:
         json.dump({"url": url, "title": info.get("title") or "",
                    "task_title": info.get("task_title") or ""}, f, ensure_ascii=False)
+    for name, data in (("segments.json", info.get("segments")),
+                       ("screenshots.json", info.get("screenshot_report"))):
+        if data is not None:
+            with open(os.path.join(folder, name), "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+    if screenshot_plan is not None:
+        with open(os.path.join(folder, "screenshot_plan.md"), "w", encoding="utf-8") as f:
+            f.write(screenshot_plan)
     return {"subtitle": sub_path, "doc": doc_path}
+
+
+def _screenshot_note(taskdir):
+    try:
+        with open(os.path.join(taskdir, "screenshots.json"), encoding="utf-8") as file:
+            return report_note(json.load(file))
+    except (OSError, ValueError, TypeError, AttributeError):
+        return ""
 
 
 class Api:
@@ -335,6 +352,7 @@ class Api:
             self.current_url = _source_url(taskdir, tid)
             self.history = self._load_history(tid)
         return {"ok": True, "doc": doc, "id": tid, "title": _task_title(self.current_taskdir, tid),
+                "note": _screenshot_note(taskdir),
                 "url": self.current_url,
                 "taskdir": self.current_taskdir, "history": self.history}
 
@@ -464,20 +482,30 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
         tid = _task_id(url)
-        if screenshots and info.get("segments"):
-            self._emit("正在截取视频截图")
-            try:
-                doc = shoot.capture(doc, url, os.path.join(_state_dir(self.cfg), tid),
-                                    self.cfg, validate=self.cfg.get("shot_validate", True))
-            except Exception as e:
+        screenshot_plan = doc if screenshots else None
+        if screenshots:
+            report = {"planned": 0, "captured": 0, "status": "failed", "failures": [{"code": "missing_timestamps"}]}
+            if any(segment.get("from") is not None for segment in info.get("segments") or []):
+                self._emit("正在截取视频截图")
+                try:
+                    doc = shoot.capture(doc, url, os.path.join(_state_dir(self.cfg), tid),
+                                        self.cfg, validate=self.cfg.get("shot_validate", True), report=report)
+                except Exception:
+                    doc = shoot.SHOT_RE.sub("", doc)
+                    report.update(status="partial" if report["captured"] else "failed")
+                    report["failures"].append({"code": "unexpected"})
+            else:
                 doc = shoot.SHOT_RE.sub("", doc)
-                note = f"截图处理失败：{e}"
+            info["screenshot_report"] = report
+            note = report_note(report)
+        else:
+            info["screenshot_report"] = {"planned": 0, "captured": 0, "status": "disabled", "failures": []}
         self._emit("正在拟定任务标题")
         try:
             info["task_title"] = agents.suggest_title(self.cfg, info, doc)
         except Exception:
             info["task_title"] = (info.get("title") or "").strip()
-        saved = _save_output(url, info, doc, self.cfg)
+        saved = _save_output(url, info, doc, self.cfg, screenshot_plan=screenshot_plan)
         self.current_taskdir = os.path.dirname(saved["doc"])
         self.current_doc = doc
         self.history = []

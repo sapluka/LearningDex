@@ -5,6 +5,8 @@ from pathlib import Path
 
 from app import main
 from app import agents
+from app.shot_status import ShotError
+import json
 
 
 class TestVideoTasks(unittest.TestCase):
@@ -96,6 +98,44 @@ class TestVideoTasks(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["title"], "纹理映射与采样")
             title.assert_called_once()
+
+
+    def test_screenshot_failures_and_timestamps_survive_reopening(self):
+        with tempfile.TemporaryDirectory() as root:
+            api = main.Api()
+            api.cfg = {"output_dir": root, "screenshots": True}
+            info = {"subtitle": "界面演示", "title": "原视频", "segments": [{"from": 90, "text": "显示界面"}]}
+            raw = "# 内容\n![界面](SHOT:01:30)"
+            with mock.patch.object(main.subtitle, "extract", return_value=info), \
+                    mock.patch.object(main.agents, "summarize", return_value=raw), \
+                    mock.patch.object(main.agents, "suggest_title", return_value="界面演示"), \
+                    mock.patch.object(main.shoot, "_download_video", side_effect=ShotError("download_rejected")):
+                result = api.generate_doc("https://www.bilibili.com/video/BV1SHOTS")
+            self.assertTrue(result["ok"])
+            self.assertIn("HTTP 412", result["note"])
+            folder = Path(root) / "BV1SHOTS"
+            self.assertEqual(json.loads((folder / "segments.json").read_text(encoding="utf-8")), info["segments"])
+            self.assertEqual((folder / "screenshot_plan.md").read_text(encoding="utf-8"), raw)
+            self.assertNotIn("SHOT:", result["doc"])
+            self.assertEqual(api.load_task("BV1SHOTS")["note"], result["note"])
+            api.cfg["screenshots"] = False
+            with mock.patch.object(main.subtitle, "extract", return_value=info), \
+                    mock.patch.object(main.agents, "summarize", return_value="# 纯文字"), \
+                    mock.patch.object(main.agents, "suggest_title", return_value="文字主题"):
+                api.generate_doc("https://www.bilibili.com/video/BV1SHOTS")
+            self.assertEqual(api.load_task("BV1SHOTS")["note"], "")
+
+    def test_screenshot_missing_timestamps_are_reported(self):
+        with tempfile.TemporaryDirectory() as root:
+            api = main.Api()
+            api.cfg = {"output_dir": root, "screenshots": True}
+            with mock.patch.object(main.subtitle, "extract", return_value={"subtitle": "文字", "segments": []}), \
+                    mock.patch.object(main.agents, "summarize", return_value="# 笔记"), \
+                    mock.patch.object(main.agents, "suggest_title", return_value="主题"), \
+                    mock.patch.object(main.shoot, "capture") as capture:
+                result = api.generate_doc("https://www.bilibili.com/video/BV1NOFRAME")
+            self.assertIn("缺少时间戳", result["note"])
+            capture.assert_not_called()
 
 
 if __name__ == "__main__":

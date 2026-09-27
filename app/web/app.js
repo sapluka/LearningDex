@@ -744,7 +744,7 @@ async function loadTask(id) {
   showWorkspace(true);
   processingEl.hidden = true;
   showTitle(r.title || id);
-  stateEl.textContent = "";
+  stateEl.textContent = r.note || "";
   $("meta").textContent = "";
   documentView.setImageDir(r.taskdir || "");
   setMarkdown(mdForDisplay(r.doc));
