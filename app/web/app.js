@@ -194,7 +194,6 @@ async function init() {
     e.setAttribute("autocapitalize", "off");
   });
   renderSamples();
-  $("startBtn").onclick = startParse;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startParse(); });
   $("chatSendBtn").onclick = sendChat;
   $("chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
