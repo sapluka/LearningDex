@@ -9,7 +9,7 @@ import uuid
 
 import webview
 
-from . import agents, config, llm, markdown_io, pdf_export, search, shoot, skills, subtitle, transcribe, web_server
+from . import agents, config, llm, markdown_io, pdf_export, search, shoot, skills, subtitle, transcribe, web_server, window_chrome
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
@@ -97,6 +97,15 @@ class Api:
 
     def load_config(self):
         return self.cfg
+
+    def get_window_state(self):
+        return window_chrome.state(webview.windows[0])
+
+    def control_window(self, action):
+        try:
+            return {"ok": True, **window_chrome.control(webview.windows[0], action)}
+        except Exception as error:
+            return {"ok": False, "error": str(error)}
 
     def reset_context(self, doc=""):
         with self._chat_lock:
@@ -477,11 +486,6 @@ class Api:
                 "taskdir": self.current_taskdir, "id": tid}
 
 
-def _prepare_window(window):
-    if hasattr(window.native, "ShowIcon"):
-        window.native.ShowIcon = False
-
-
 def main():
     api = Api()
     window = webview.create_window(
@@ -491,7 +495,10 @@ def main():
         width=1000,
         height=750,
     )
-    window.events.before_show += _prepare_window
+    window.events.before_show += window_chrome.prepare
+    window.events.loaded += window_chrome.notify_state
+    window.events.maximized += window_chrome.notify_state
+    window.events.restored += window_chrome.notify_state
     webview.start()
 
 

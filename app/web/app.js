@@ -11,6 +11,7 @@ import { configureHighlight, highlightPlugins } from "./highlight_plugin.mjs";
 import { createTaskSidebar } from "./sidebar_tasks.mjs";
 import { reveal, cancelReveal, createSlogan, openModal } from "./page_motion.mjs";
 import { renderTaskCards } from "./task_library.mjs";
+import { initWindowChrome } from "./window_chrome.mjs";
 
 let api = null;
 let editor = null;
@@ -174,6 +175,11 @@ function fillSettings(cfg) {
 
 async function init() {
   api = window.pywebview.api;
+  await initWindowChrome(api, (message) => {
+    stateEl.textContent = message;
+    $("welcomeError").textContent = message;
+    $("welcomeError").hidden = false;
+  });
   taskSidebar = createTaskSidebar($("sidebarTasks"), api, loadTask);
   fillSettings(await api.load_config());
   resizePanels = initPanelDivider(() => { scheduleHighlights(); scheduleMermaid(); });

@@ -7,6 +7,8 @@
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   margin: 0;
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
   background: #f7f7f7;
@@ -20,8 +22,17 @@ body {
 
 .app {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
 }
+
+.window-titlebar { position: relative; display: flex; justify-content: flex-end; flex: 0 0 32px; background: #fff; border-bottom: 1px solid #eee; user-select: none; }
+.window-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 13px; font-weight: 600; pointer-events: none; }
+.window-controls { display: flex; height: 32px; }
+.window-controls button { display: grid; place-items: center; width: 46px; border: 0; padding: 0; background: transparent; cursor: default; }
+.window-controls svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1; }
+.window-controls .restore-shape, .window-controls .is-maximized .maximize-shape { display: none; }
+.window-controls .is-maximized .restore-shape { display: initial; }
 
 /* 左栏 */
 .sidebar {

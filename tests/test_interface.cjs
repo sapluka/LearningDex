@@ -32,6 +32,12 @@ const server = http.createServer((req, res) => {
       window.__directoryResults = {output: {ok: true, path: 'D:/测试/任务'}, pdf: {ok: true, path: 'D:/测试/PDF'}};
       window.pywebview = { api: {
         load_config: async () => ({}), reset_context: async () => ({ok: true}),
+        get_window_state: async () => ({custom_titlebar: true, maximized: !!window.__maximized}),
+        control_window: async action => {
+          (window.__windowActions ||= []).push(action);
+          if (action === 'toggle_maximize') window.__maximized = !window.__maximized;
+          return {ok: true, custom_titlebar: true, maximized: !!window.__maximized};
+        },
         save_config: async cfg => { window.__settings = cfg; return {ok: true}; },
         choose_output_dir: async () => {
           if (window.__directoryError) throw new Error('目录选择不可用');
@@ -65,6 +71,17 @@ const server = http.createServer((req, res) => {
     await page.waitForSelector('#sidebarTasks button');
     assert.equal(await page.title(), 'LearningDex');
     assert.equal(await page.locator('.brand-name').innerText(), 'LearningDex');
+    await page.locator('#windowTitlebar button[aria-label="最小化"]').click();
+    await page.locator('#windowMaximize').click();
+    assert.equal(await page.locator('#windowMaximize').getAttribute('aria-label'), '还原');
+    await page.locator('#windowMaximize').click();
+    assert.equal(await page.locator('#windowMaximize').getAttribute('aria-label'), '最大化');
+    await page.locator('#windowTitlebar').dblclick({position: {x: 100, y: 16}});
+    assert.equal(await page.locator('#windowMaximize').getAttribute('aria-label'), '还原');
+    await page.locator('#windowMaximize').click();
+    await page.locator('#windowTitlebar button[aria-label="关闭窗口"]').click();
+    assert.deepEqual(await page.evaluate(() => window.__windowActions),
+      ['minimize', 'toggle_maximize', 'toggle_maximize', 'toggle_maximize', 'toggle_maximize', 'close']);
     const assertWelcomeLayout = async () => {
       assert.equal(await page.locator('.chat').isVisible(), false);
       assert.equal(await page.locator('#panelDivider').isVisible(), false);
@@ -72,6 +89,9 @@ const server = http.createServer((req, res) => {
       const center = await page.locator('.center').boundingBox();
       assert.ok(Math.abs(sidebar.width / page.viewportSize().width - 0.2) < 0.001);
       assert.ok(Math.abs(center.width / page.viewportSize().width - 0.8) < 0.001);
+      const title = await page.locator('.window-title').boundingBox();
+      assert.ok(Math.abs(title.x + title.width / 2 - page.viewportSize().width / 2) < 1);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollHeight), page.viewportSize().height);
     };
     await assertWelcomeLayout();
     await page.setViewportSize({width: 1200, height: 800});
