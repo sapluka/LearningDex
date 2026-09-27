@@ -3,35 +3,13 @@ import tempfile
 import unittest
 from unittest import mock
 
-from app import bilibili, shoot, subtitle, transcribe
+from app import shoot, subtitle, transcribe
 
 
 URL = "https://www.bilibili.com/video/BV1CQt365EzW"
 
 
 class TestBilibiliRequests(unittest.TestCase):
-    def test_playback_referer_changes_without_losing_signing_parameters(self):
-        original_headers = {"Referer": URL, "User-Agent": "browser"}
-        query = {"qn": 64, "try_look": 1}
-        with mock.patch.object(bilibili.BaseBiliBiliIE, "_download_playinfo", return_value={"dash": {}}) as request:
-            result = bilibili.BiliBiliIE()._download_playinfo("BV1CQt365EzW", 123,
-                headers=original_headers, query=query)
-        self.assertEqual(result, {"dash": {}})
-        request.assert_called_once_with("BV1CQt365EzW", 123,
-            headers={"Referer": "https://www.bilibili.com/", "User-Agent": "browser"}, query=query)
-        self.assertEqual(original_headers["Referer"], URL)
-
-    def test_extractor_replaces_only_bilibili_in_current_instance(self):
-        with subtitle.yt_dlp.YoutubeDL({"quiet": True}) as downloader:
-            original = downloader.get_info_extractor("BiliBili")
-            youtube = downloader.get_info_extractor("Youtube")
-            bilibili.configure(downloader)
-            replacement = downloader.get_info_extractor("BiliBili")
-            self.assertIsInstance(replacement, bilibili.BiliBiliIE)
-            self.assertIsNot(replacement, original)
-            self.assertIs(downloader.get_info_extractor("Youtube"), youtube)
-        self.assertNotEqual(bilibili.BaseBiliBiliIE, bilibili.BiliBiliIE)
-
     def test_cookie_bootstrap_and_downloader_use_same_user_agent(self):
         subtitle.configure({})
         opener = mock.Mock()

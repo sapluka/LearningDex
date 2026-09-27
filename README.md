@@ -30,6 +30,8 @@ Windows 任务栏使用本地黑底白字 LD 图标和独立应用标识。图�
 
 B 站的 Cookie 初始化、字幕提取、音频和截图下载使用相同的浏览器标识（User-Agent）；播放接口使用 B 站首页作为来源页面（Referer），修复视频页来源标记触发的 HTTP 412。仍保留原有签名、登录及格式处理。
 
+适配层直接继承 yt-dlp 的播放函数，仅在发送播放接口请求时调整来源，兼容新版新增的 `fatal` 参数，避免视频链接统一报 `unexpected keyword argument 'fatal'`。
+
 ## 测试
 
 - 后端：`python -m unittest discover -s tests -q`
