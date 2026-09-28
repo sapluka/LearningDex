@@ -17,6 +17,7 @@ __pycache__/
 .venv/
 env/
 app/web/node_modules/
+*.spec
 
 # 其它
 .DS_Store

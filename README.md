@@ -2,9 +2,24 @@
 
 视频学习辅助 Agent（编辑器 + Agent 一体化）：输入视频链接，自动提取字幕或本地转写，由 Agent 生成可编辑的 Markdown 学习文档，支持对话提问和导出笔记。
 
-## 运行
+## Windows 下载与体验
+
+在 [Releases](https://github.com/sapluka/LearningDex/releases) 下载最新的 `LearningDex.exe`，放在任意文件夹，双击运行。发布包已包含 Python、界面和三份示例，不必安装 Python，也不必下载仓库源码。适用于 Windows 10/11 64 位；窗口需要系统中的 Edge WebView2 运行环境。
+
+第一次体验可按以下顺序检查：
+
+1. 打开软件，确认首页有「纹理映射续讲」「Computer Use」「提示词工程」三张示例卡片。
+2. 逐个点击卡片，确认笔记文字与图片能显示；尝试编辑一句话，再点「导出 .md」或「生成PDF」。这一步不需要 API 密钥。
+3. 想测试新视频时，先打开设置，填自己的模型协议、请求 URL、模型名和 API Key，并点击「检验连接」。再返回首页输入视频链接，按回车开始解析。B 站登录信息可先留空；需要登录才能获取的视频再按设置页提示填写。
+4. 解析完成后检查文档、截图提示和右侧问答；关闭再打开软件，检查历史任务是否还在。默认任务、设置及模型缓存保存在 `%LOCALAPPDATA%\LearningDex\`，可在设置中改存储目录。
+
+API Key 等敏感字段只在本次运行中使用，不写进配置文件；重启后需重新填写。首次本地语音转写会下载模型，视频解析与模型调用需要网络。
+
+## 从源码运行
 
 使用 Python 3.9 及以上版本，安装 `requirements.txt` 后运行 `python -m app.main`。首次转写会下载本地模型；界面静态资源已随项目提供，打开历史任务不需要访问前端 CDN。
+
+Windows 发布包可在已安装依赖的 `.venv` 中另装 `requirements-build.txt`，运行 `tools/build_release.ps1` 构建；产物位于忽略提交的 `output/release/dist/`。构建脚本排除个人配置及 `personal.py`。
 
 如需修改前端源码，在 `app/web/` 运行 `npm ci` 和 `npm run build`，再启动桌面应用。
 
