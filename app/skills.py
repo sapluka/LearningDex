@@ -1,9 +1,31 @@
 import os
 import re
+import shutil
+import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from . import runtime_paths
+
+ROOT = str(runtime_paths.data_root())
 SKILLS_DIR = os.path.join(ROOT, "skills")
+BUILTIN_SKILLS_DIR = os.path.join(runtime_paths.RESOURCE_ROOT, "skills")
 _NAME_RE = re.compile(r"^[\w\u4e00-\u9fa5\-]{1,40}$")
+
+
+def _seed_builtin_skills():
+    if not getattr(sys, "frozen", False):
+        return
+    marker = os.path.join(SKILLS_DIR, ".initialized")
+    if os.path.exists(marker):
+        return
+    os.makedirs(SKILLS_DIR, exist_ok=True)
+    for name in os.listdir(BUILTIN_SKILLS_DIR):
+        if name.lower() != "readme.md" and name.lower().endswith((".md", ".txt")):
+            source = os.path.join(BUILTIN_SKILLS_DIR, name)
+            target = os.path.join(SKILLS_DIR, name)
+            if not os.path.exists(target):
+                shutil.copyfile(source, target)
+    with open(marker, "w", encoding="utf-8"):
+        pass
 
 
 def _path(name):
@@ -23,6 +45,7 @@ def _existing_path(name):
 
 
 def list_skills():
+    _seed_builtin_skills()
     out = []
     if not os.path.isdir(SKILLS_DIR):
         return out
@@ -43,6 +66,7 @@ def list_skills():
 
 
 def get(name):
+    _seed_builtin_skills()
     p = _existing_path(name)
     if p and os.path.exists(p):
         try:
@@ -54,6 +78,7 @@ def get(name):
 
 
 def save(name, content):
+    _seed_builtin_skills()
     p = _existing_path(name) or _path(name)
     if not p:
         return False
@@ -64,6 +89,7 @@ def save(name, content):
 
 
 def delete(name):
+    _seed_builtin_skills()
     md = _path(name)
     if not md:
         return False

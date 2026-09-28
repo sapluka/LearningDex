@@ -9,11 +9,11 @@ import uuid
 
 import webview
 
-from . import agents, config, llm, markdown_io, pdf_export, search, shoot, skills, subtitle, transcribe, web_server, window_chrome
+from . import agents, config, llm, markdown_io, pdf_export, runtime_paths, search, shoot, skills, subtitle, transcribe, web_server, window_chrome
 from .shot_status import report_note
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
-DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+DEFAULT_STATE_DIR = str(runtime_paths.data_root() / "output")
 
 
 def _sample_source_dir(sample_id):

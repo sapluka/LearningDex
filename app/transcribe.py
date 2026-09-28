@@ -10,6 +10,7 @@ import yt_dlp
 from faster_whisper import WhisperModel
 
 from . import bilibili, subtitle
+from . import runtime_paths
 
 
 def _preload_cuda_dlls():
@@ -39,7 +40,7 @@ def _preload_cuda_dlls():
 
 _preload_cuda_dlls()
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = str(runtime_paths.data_root())
 CACHE_DIR = os.path.join(ROOT, "cache", "audio")
 MODEL_FILES = ["config.json", "model.bin", "tokenizer.json"]
 MODEL_EXTRA = ["vocabulary.txt", "vocabulary.json", "preprocessor_config.json"]

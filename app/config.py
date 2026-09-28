@@ -1,7 +1,9 @@
 import json
 import os
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")
+from . import runtime_paths
+
+CONFIG_PATH = str(runtime_paths.data_root() / "config.json")
 
 # 敏感字段：只能由个人信息文档(personal.py)/环境变量注入，绝不写入 config.json
 SENSITIVE = ("api_key", "bili_sessdata", "cookies_file", "cookies_text")
@@ -60,5 +62,6 @@ def load():
 
 def save(cfg):
     safe = {k: v for k, v in cfg.items() if k not in SENSITIVE}
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(safe, f, ensure_ascii=False, indent=2)
