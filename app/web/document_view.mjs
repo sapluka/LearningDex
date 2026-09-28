@@ -6,6 +6,7 @@ export function createDocumentView(getMarkdown, chatLog, {setDiagramDecorations 
 const $ = (id) => document.getElementById(id);
 const mathLayer = $("mathLayer");
 let imgDir = "";
+let bundledImageBase = "";
 
 let hlScheduled = false;
 function scheduleHighlights() {
@@ -15,8 +16,8 @@ function scheduleHighlights() {
 }
 
 function fixImages() {
-  if (!imgDir) return;
   const base = absBase();
+  if (!base) return;
   document.querySelectorAll("#editor img").forEach((im) => {
     const s = im.getAttribute("src") || "";
     if (s.startsWith("images/")) im.setAttribute("src", base + "/" + s);
@@ -24,6 +25,7 @@ function fixImages() {
 }
 
 function absBase() {
+  if (bundledImageBase) return bundledImageBase;
   const taskId = imgDir.split(/[\\/]/).filter(Boolean).pop();
   return taskId ? window.location.origin + "/task-images/" + encodeURIComponent(taskId) : "";
 }
@@ -135,7 +137,8 @@ function renderEditorMath() {
 }
 
   return {
-    setImageDir(dir) { imgDir = dir || ""; },
+    setImageDir(dir) { imgDir = dir || ""; bundledImageBase = ""; },
+    setBundledImageBase(base) { imgDir = ""; bundledImageBase = (base || "").replace(/\/$/, ""); },
     clearLayers() {
       diagrams.clear();
       mathLayer.innerHTML = "";

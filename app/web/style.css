@@ -193,7 +193,7 @@ body {
 
 .app.is-welcome .center, .app.is-browsing .center { flex: 1 1 0; }
 .app.is-welcome .url-input { width: 80%; max-width: 660px; }
-.app.is-welcome .sample-card { width: 190px; }
+.app.is-welcome .sample-card { width: 230px; }
 
 .h1 {
   font-size: 28px;
@@ -246,7 +246,7 @@ body {
 
 .sample-card {
   width: 150px;
-  min-height: 106px;
+  min-height: 150px;
   border: 1px solid #dbdbdb;
   border-radius: 12px;
   display: flex;
@@ -269,6 +269,10 @@ body {
 .sample-card strong {
   color: #1d1d1d;
   font-size: 14px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .sample-card small {

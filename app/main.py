@@ -16,6 +16,13 @@ WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 DEFAULT_STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
 
 
+def _sample_source_dir(sample_id):
+    if not isinstance(sample_id, str) or not re.fullmatch(r"BV[0-9A-Za-z]{6,20}", sample_id):
+        return ""
+    directory = os.path.join(WEB_DIR, "examples", sample_id)
+    return directory if os.path.isfile(os.path.join(directory, "note.md")) else ""
+
+
 def _state_dir(cfg):
     d = (cfg or {}).get("output_dir") or ""
     return d if d else DEFAULT_STATE_DIR
@@ -424,7 +431,12 @@ class Api:
             return {"ok": True, **res}
         return {"ok": False, "error": "未找到结果"}
 
-    def export_md(self, content, default_name="学习笔记.md"):
+    def export_md(self, content, default_name="学习笔记.md", sample_id=""):
+        source_dir = self.current_taskdir
+        if sample_id and not source_dir:
+            source_dir = _sample_source_dir(sample_id)
+            if not source_dir:
+                return {"ok": False, "error": "示例资源不存在"}
         try:
             path = webview.windows[0].create_file_dialog(
                 webview.SAVE_DIALOG, save_filename=default_name)
@@ -435,7 +447,7 @@ class Api:
         if isinstance(path, (list, tuple)):
             path = path[0]
         try:
-            markdown_io.export_markdown(content, path, self.current_taskdir)
+            markdown_io.export_markdown(content, path, source_dir)
         except (OSError, ValueError) as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "path": path}

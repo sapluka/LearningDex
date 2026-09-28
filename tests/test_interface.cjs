@@ -11,7 +11,8 @@ const server = http.createServer((req, res) => {
   if (!filename.startsWith(root + path.sep) || !fs.existsSync(filename)) {
     res.writeHead(404).end(); return;
   }
-  const mime = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml' };
+  const mime = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html',
+    '.svg': 'image/svg+xml', '.md': 'text/markdown; charset=utf-8', '.jpg': 'image/jpeg' };
   res.setHeader('Content-Type', mime[path.extname(filename)] || 'application/octet-stream');
   fs.createReadStream(filename).pipe(res);
 });
@@ -195,7 +196,14 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.evaluate(() => window.__settings.output_dir), 'D:/测试/任务');
     assert.equal(await page.evaluate(() => window.__settings.pdf_output_dir), 'D:/测试/PDF');
     await page.locator('#closeSettings').click();
+    assert.deepEqual(await page.locator('#sampleCards button strong').allTextContents(), [
+      '纹理映射续讲：重心坐标插值与纹理过滤方法',
+      '【闪客】Computer Use 是什么？它真的有在看你的屏幕吗？可能和你想的不太一样...',
+      '提示词工程 [02-Raw/26生成式软件工程/NJU]',
+    ]);
     await page.locator('#sampleCards button').first().click();
+    await page.waitForFunction(() => document.querySelectorAll('#editor img[src*="/examples/BV1X7411F744/images/"]').length === 9);
+    assert.match(await page.evaluate(() => window._getMarkdown()), /!\[[^\]]*\]\(images\/shot_1.jpg\)/);
     assert.equal(await page.locator('.chat').isVisible(), true);
     const beforeDrag = await page.locator('.center').boundingBox();
     const divider = await page.locator('#panelDivider').boundingBox();

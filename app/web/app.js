@@ -20,6 +20,7 @@ let editor = null;
 let imageActions = null;
 let currentUrl = "";
 let currentTaskId = "";
+let currentSampleId = "";
 const $ = (id) => document.getElementById(id);
 const stateEl = $("state");
 const processingEl = $("processingMessage");
@@ -305,6 +306,7 @@ async function newParse() {
   if (request !== navigationRevision) return;
   currentUrl = "";
   currentTaskId = "";
+  currentSampleId = "";
   taskSidebar.setActive("");
   showTitle("学习文档");
   chatBubbles.clear();
@@ -328,6 +330,7 @@ function renderSamples() {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "sample-card";
+    card.title = sample.title;
     const category = document.createElement("small");
     category.textContent = sample.category;
     const title = document.createElement("strong");
@@ -343,21 +346,34 @@ function renderSamples() {
 async function openSample(sample) {
   const request = ++navigationRevision;
   if (!await flushDraft() || request !== navigationRevision) return;
-  await changeContext(() => request === navigationRevision ? api.reset_context(sample.markdown) : null);
+  let markdown;
+  try {
+    const response = await fetch(sample.markdownPath);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    markdown = await response.text();
+  } catch (error) {
+    if (request !== navigationRevision) return;
+    $("welcomeError").hidden = false;
+    $("welcomeError").textContent = "示例加载失败：" + error.message;
+    return;
+  }
+  if (request !== navigationRevision) return;
+  await changeContext(() => request === navigationRevision ? api.reset_context(markdown) : null);
   if (request !== navigationRevision) return;
   currentUrl = "";
   currentTaskId = "";
+  currentSampleId = sample.id;
   taskSidebar.setActive("");
   chatBubbles.clear();
-  documentView.setImageDir("");
+  documentView.setBundledImageBase(new URL(`examples/${sample.id}/`, window.location.href).href);
   showWorkspace(true);
   processingEl.hidden = true;
   showTitle(sample.title);
-  $("meta").textContent = "内置演示 · 可编辑、提问、导出";
+  $("meta").textContent = "真实视频示例 · 可编辑、提问、导出";
   stateEl.textContent = "示例文档";
   stateEl.style.color = "#404040";
   documentView.clearLayers();
-  setMarkdown(sample.markdown);
+  setMarkdown(mdForDisplay(markdown));
   scheduleHighlights();
   setTimeout(renderMermaids, 300);
   setFavoriteState(false);
@@ -422,6 +438,7 @@ async function startParse() {
   $("settings").hidden = true;
   currentUrl = url;
   currentTaskId = "";
+  currentSampleId = "";
   taskSidebar.setActive("");
   showTitle("学习文档");
   chatBubbles.clear();
@@ -446,6 +463,7 @@ async function startParse() {
       `${info.transcribe_note ? "（" + info.transcribe_note + "）" : ""}`;
     documentView.setImageDir(r.taskdir || "");
     currentTaskId = r.id || "";
+    currentSampleId = "";
     taskSidebar.setActive(currentTaskId);
     await taskSidebar.refresh();
     showTitle(r.title || info.title || "学习文档");
@@ -477,7 +495,7 @@ async function exportMarkdown() {
   const title = ($("docTitle").textContent || "学习笔记").replace(/[\\/:*?"<>|]/g, "_").trim();
   try {
     await flushDraft();
-    const r = await api.export_md(getMarkdown(), (title || "学习笔记") + ".md");
+    const r = await api.export_md(getMarkdown(), (title || "学习笔记") + ".md", currentSampleId);
     if (r.ok) {
       stateEl.textContent = "Markdown 已导出：" + r.path;
       stateEl.style.color = "#404040";
@@ -721,6 +739,7 @@ async function deleteTask(id) {
   if (!result.ok) { $("libraryStatus").textContent = "删除失败：" + result.error; return; }
   if (currentTaskId === id) {
     currentTaskId = "";
+    currentSampleId = "";
     currentUrl = "";
     chatBubbles.clear();
     taskSidebar.setActive("");
@@ -756,6 +775,7 @@ async function loadTask(id) {
   }
   currentUrl = r.url || "";
   currentTaskId = id;
+  currentSampleId = "";
   taskSidebar.setActive(id);
   showWorkspace(true);
   processingEl.hidden = true;
