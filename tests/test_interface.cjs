@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
         list_skills: async () => ({ok: true, skills: []}),
         list_favorites: async () => ({ok: true, favorites: window.__tasks.slice(0, 1)}),
         toggle_favorite: async () => ({ok: true, favorited: true}),
-        update_doc: async () => ({ok: true}), save_draft: async () => ({ok: true}),
+        update_doc: async () => ({ok: true}), save_draft: async doc => { window.__savedDraft = doc; return {ok: true}; },
         list_tasks: async () => {
           if (window.__holdTasks) await new Promise(resolve => { window.__releaseTasks = resolve; });
           return {ok: true, tasks: window.__tasks};
@@ -65,7 +65,7 @@ const server = http.createServer((req, res) => {
         },
         load_task: async id => {
           if (window.__holdLoadTask === id) await new Promise(resolve => { window.__releaseTask = resolve; });
-          return {ok: true, id, note: window.__screenshotNote || '', title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]};
+          return {ok: true, id, taskdir: 'D:/test-output/' + id, note: window.__screenshotNote || '', title: '课程 ' + id, doc: '# 课程 ' + id + '\n\n正文', history: [{role: 'user', content: '问题 ' + id}, {role: 'assistant', content: '回答 ' + id + '\n\n==重点=='}]};
         },
       }};
     });
@@ -305,6 +305,80 @@ const server = http.createServer((req, res) => {
     await snapshot('expanded-document-narrow');
     await page.setViewportSize({width: 1440, height: 900});
     await assertContentFits();
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    const imageDoc = '# 图片操作\n\n前文\n\n![示意图](' + origin + '/layout-diagram.svg)\n\n后文';
+    await page.evaluate(md => window._setMarkdown(md), imageDoc);
+    const docImage = page.locator('#editor .ProseMirror img[src]');
+    await docImage.click();
+    assert.equal(await docImage.evaluate(node => node.classList.contains('ProseMirror-selectednode')), true);
+    await docImage.click({button: 'right'});
+    assert.equal(await page.locator('#imageMenu').isVisible(), true);
+    assert.deepEqual(await page.locator('#imageMenu button').allTextContents(), ['复制', '剪切', '删除']);
+    assert.equal(await page.locator('#formatMenu').isVisible(), false);
+    await snapshot('image-context-menu');
+    await page.locator('#imageMenu button[data-image-action="copy"]').click();
+    await page.waitForFunction(async () => {
+      const contents = await navigator.clipboard.read();
+      for (const item of contents) if (item.types.includes('text/html')) {
+        if ((await (await item.getType('text/html')).text()).includes('layout-diagram.svg')) return true;
+      }
+      return false;
+    });
+    assert.equal(await docImage.count(), 1);
+    await page.locator('#editor .ProseMirror p').last().click({position: {x: 2, y: 8}});
+    assert.equal(await docImage.evaluate(node => node.classList.contains('ProseMirror-selectednode')), false);
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Control+v');
+    await page.waitForFunction(() => document.querySelectorAll('#editor .ProseMirror img[src]').length === 2);
+    await docImage.last().click();
+    await docImage.last().click({button: 'right'});
+    await page.locator('#imageMenu button[data-image-action="cut"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('#editor .ProseMirror img[src]').length === 1);
+    assert.equal(await docImage.count(), 1);
+    await page.keyboard.press('Control+z');
+    assert.equal(await docImage.count(), 2);
+    await page.keyboard.press('Control+y');
+    assert.equal(await docImage.count(), 1);
+    await docImage.click();
+    await docImage.click({button: 'right'});
+    await page.evaluate(() => {
+      window.__originalExecCommand = document.execCommand;
+      document.execCommand = () => false;
+      window.__originalClipboardWrite = navigator.clipboard.write;
+      navigator.clipboard.write = async () => { throw new Error('clipboard unavailable'); };
+    });
+    await page.locator('#imageMenu button[data-image-action="cut"]').click();
+    await page.waitForFunction(() => document.querySelector('#state').textContent.includes('图片复制失败'));
+    assert.equal(await docImage.count(), 1);
+    assert.match(await page.locator('#state').innerText(), /图片复制失败/);
+    await page.evaluate(() => {
+      document.execCommand = window.__originalExecCommand;
+      navigator.clipboard.write = window.__originalClipboardWrite;
+    });
+    await docImage.click({button: 'right'});
+    await page.locator('#imageMenu button[data-image-action="delete"]').click();
+    assert.equal(await docImage.count(), 0);
+    await page.keyboard.press('Control+z');
+    assert.equal(await docImage.count(), 1);
+    // Exercise the browser's native drag events and the editor's move transaction.
+    const beforeImageMove = await page.evaluate(() => window._getMarkdown());
+    await docImage.dragTo(page.locator('#editor .ProseMirror p').first(), {targetPosition: {x: 1, y: 8}});
+    assert.equal(await docImage.count(), 1);
+    const movedImageDoc = await page.evaluate(() => window._getMarkdown());
+    assert.ok(movedImageDoc.indexOf('![示意图]') < movedImageDoc.indexOf('后文'));
+    assert.notEqual(movedImageDoc, beforeImageMove);
+    await page.waitForFunction(doc => window.__savedDraft === doc, movedImageDoc);
+    await page.keyboard.press('Control+z');
+    const undoImageDoc = await page.evaluate(() => window._getMarkdown());
+    assert.equal(undoImageDoc, beforeImageMove);
+    await page.waitForFunction(doc => window.__savedDraft === doc, undoImageDoc);
+    // Task image paths remain relative after a move and serialization.
+    await page.evaluate(md => window._setMarkdown(md), '前文\n\n![任务截图](' + origin + '/task-images/A/images/shot_1.jpg)\n\n后文');
+    await page.locator('#editor .ProseMirror img[src]').dragTo(
+      page.locator('#editor .ProseMirror p').first(), {targetPosition: {x: 1, y: 8}});
+    assert.equal(await page.locator('#editor .ProseMirror img[src]').count(), 1);
+    assert.match(await page.evaluate(() => window._getMarkdown()), /!\[任务截图\]\(images\/shot_1.jpg\)/);
     await page.evaluate(() => window._setMarkdown('# 课程 A\n\n正文'));
     assert.ok((await page.locator('#chatLog').innerText()).includes('回答 A'));
     assert.equal((await style('#chatLog .bub.user')).background, 'rgb(230, 240, 255)');

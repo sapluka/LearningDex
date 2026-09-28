@@ -390,7 +390,12 @@ body {
   max-width: 100%;
   height: auto;
   object-fit: contain;
+  cursor: grab;
 }
+
+.editor .ProseMirror img.ProseMirror-selectednode { outline: 2px solid #525252; outline-offset: 2px; }
+.editor .ProseMirror img:active { cursor: grabbing; }
+.editor .ProseMirror:focus { outline: none; }
 
 .processing-message {
   position: absolute;

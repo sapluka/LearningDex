@@ -13,9 +13,11 @@ import { reveal, cancelReveal, createSlogan, openModal } from "./page_motion.mjs
 import { renderTaskCards } from "./task_library.mjs";
 import { initWindowChrome } from "./window_chrome.mjs";
 import { diagramPlugin, setDiagramDecorations } from "./diagram_plugin.mjs";
+import { createImagePlugins, initImageActions } from "./image_actions.mjs";
 
 let api = null;
 let editor = null;
+let imageActions = null;
 let currentUrl = "";
 let currentTaskId = "";
 const $ = (id) => document.getElementById(id);
@@ -50,6 +52,7 @@ function changeContext(action) {
 }
 
 function showPage(page) {
+  imageActions?.hide();
   const isWorkspace = page === "workspace";
   const isLibrary = page === "tasks" || page === "favorites";
   for (const id of ["welcome", "workspace", "libraryPage", "taskList", "favList"]) cancelReveal($(id));
@@ -194,9 +197,16 @@ async function init() {
     .use(gfm)
     .use(highlightPlugins)
     .use(diagramPlugin)
+    .use(createImagePlugins(() => { scheduleDraft(); scheduleHighlights(); scheduleMermaid(); }))
     .use(history)
     .create();
   window.editor = editor;
+  imageActions = initImageActions({
+    root: $("editor"), menu: $("imageMenu"),
+    getView: () => { let view; editor.action(ctx => { view = ctx.get(editorViewCtx); }); return view; },
+    onError: message => { stateEl.textContent = message; },
+    closeTextMenu: () => { $("formatMenu").hidden = true; },
+  });
   editor._setMarkdown = setMarkdown;
   editor._getMarkdown = getMarkdown;
   document.querySelectorAll("#editor [contenteditable], #editor .ProseMirror").forEach((e) => {
