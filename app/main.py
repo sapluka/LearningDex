@@ -469,10 +469,11 @@ class Api:
         if not info["subtitle"]:
             if not self.cfg.get("auto_transcribe", True):
                 return {"ok": False, "error": f"未获取到字幕：{info.get('error') or '无字幕'}", "info": info}
-            self._emit("正在转写语音（本地模型，较慢请稍候）")
+            self._emit("正在准备本地语音转写")
             try:
                 tr = transcribe.transcribe_video(
-                    url, self.cfg, model_size=self.cfg.get("whisper_model", "base"))
+                    url, self.cfg, model_size=self.cfg.get("whisper_model", "base"),
+                    progress=self._emit)
             except Exception as e:
                 return {"ok": False, "error": f"语音转写失败：{e}", "info": info}
             info["subtitle"] = tr["subtitle"]

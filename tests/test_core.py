@@ -34,6 +34,50 @@ class TestTranscribe(unittest.TestCase):
     def test_model_dir(self):
         self.assertTrue(transcribe._model_dir("base").endswith("whisper-base"))
 
+    def test_cpu_selection_never_loads_gpu_model(self):
+        segment = mock.Mock(text="你好", start=0, end=2)
+        model = mock.Mock()
+        model.transcribe.return_value = ([segment], mock.Mock(duration=2))
+        with mock.patch.object(transcribe, "ensure_model", return_value="model") as ensure, \
+             mock.patch.object(transcribe, "WhisperModel", return_value=model) as create:
+            result = transcribe.transcribe("audio.m4a", model_size="base")
+        ensure.assert_called_once_with("base", progress=None)
+        create.assert_called_once_with("model", device="cpu", compute_type="int8")
+        self.assertEqual(result[1], "base(cpu)")
+
+    def test_gpu_failure_falls_back_to_base_cpu(self):
+        segment = mock.Mock(text="你好", start=0, end=2)
+        model = mock.Mock()
+        model.transcribe.return_value = ([segment], mock.Mock(duration=2))
+        with mock.patch.object(transcribe, "ensure_model", return_value="model") as ensure, \
+             mock.patch.object(transcribe, "WhisperModel", side_effect=[OSError("missing DLL"), model]) as create:
+            result = transcribe.transcribe("audio.m4a", model_size=transcribe.TURBO)
+        self.assertEqual([call.args[0] for call in ensure.call_args_list], [transcribe.TURBO, "base"])
+        self.assertEqual(create.call_args_list[1].kwargs["device"], "cpu")
+        self.assertEqual(result[1], "base(cpu)")
+
+    def test_gpu_failure_during_lazy_recognition_falls_back_to_cpu(self):
+        gpu = mock.Mock()
+        gpu.transcribe.return_value = (iter([mock.Mock(text="", start=0, end=1),
+                                               mock.Mock(text="", start=1, end=2)]), mock.Mock(duration=2))
+        cpu = mock.Mock()
+        cpu.transcribe.return_value = ([mock.Mock(text="完成", start=0, end=2)], mock.Mock(duration=2))
+        stages = []
+        with mock.patch.object(transcribe, "ensure_model", return_value="model"), \
+             mock.patch.object(transcribe, "WhisperModel", side_effect=[gpu, cpu]):
+            original = gpu.transcribe.return_value[0]
+
+            def failing_segments():
+                next(original)
+                raise RuntimeError("CUDA DLL missing")
+                yield
+
+            gpu.transcribe.return_value = (failing_segments(), mock.Mock(duration=2))
+            result = transcribe.transcribe("audio.m4a", transcribe.TURBO, progress=stages.append)
+        self.assertEqual(result[0], "完成")
+        self.assertEqual(result[1], "base(cpu)")
+        self.assertTrue(any("改用 base CPU" in stage for stage in stages))
+
 
 class TestLlm(unittest.TestCase):
     def test_full_model_anthropic(self):
