@@ -17,10 +17,23 @@ def complete(cfg, messages, **kw):
 
 
 def text(cfg, messages, response_meta=None, **kw):
+    if kw.pop("streaming", False):
+        return "".join(stream(cfg, messages, **kw))
     r = complete(cfg, messages, **kw)
     if response_meta is not None:
         response_meta["finish_reason"] = getattr(r.choices[0], "finish_reason", None)
     return r.choices[0].message.content
+
+
+def is_connection_error(error):
+    current = error
+    while current is not None:
+        message = str(current).lower()
+        if any(marker in message for marker in ("winerror 10061", "connection refused",
+                                                 "connecterror", "connection error")):
+            return True
+        current = current.__cause__
+    return False
 
 
 def stream(cfg, messages, **kw):

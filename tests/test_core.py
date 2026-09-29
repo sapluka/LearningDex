@@ -80,6 +80,20 @@ class TestTranscribe(unittest.TestCase):
 
 
 class TestLlm(unittest.TestCase):
+    def test_streaming_text_collects_complete_response(self):
+        with mock.patch.object(llm, "stream", return_value=iter(["前半", "后半"])) as request:
+            self.assertEqual(llm.text({}, [], streaming=True, timeout=180), "前半后半")
+        self.assertEqual(request.call_args.kwargs["timeout"], 180)
+
+    def test_connection_error_recognizes_wrapped_windows_refusal(self):
+        try:
+            raise OSError("[WinError 10061] 目标计算机积极拒绝连接")
+        except OSError as cause:
+            wrapped = RuntimeError("DeepseekException")
+            wrapped.__cause__ = cause
+        self.assertTrue(llm.is_connection_error(wrapped))
+        self.assertFalse(llm.is_connection_error(RuntimeError("invalid api key")))
+
     def test_connection_requires_nonempty_answer(self):
         with mock.patch.object(llm, "text", return_value="  "):
             with self.assertRaisesRegex(RuntimeError, "未返回正文"):
@@ -105,6 +119,28 @@ class TestLlm(unittest.TestCase):
 
 
 class TestAgents(unittest.TestCase):
+    def test_summary_retries_one_refused_connection(self):
+        progress = mock.Mock()
+        with mock.patch.object(agents.llm, "text", side_effect=[
+                    RuntimeError("DeepseekException - [WinError 10061]"), "# 笔记"]) as request, \
+             mock.patch.object(agents.time, "sleep") as pause:
+            self.assertEqual(agents.summarize({}, {"subtitle": "内容"}, progress=progress), "# 笔记")
+        self.assertEqual(request.call_count, 2)
+        self.assertTrue(request.call_args.kwargs["streaming"])
+        progress.assert_called_once()
+        pause.assert_called_once()
+
+    def test_summary_does_not_retry_authentication_error(self):
+        with mock.patch.object(agents.llm, "text", side_effect=RuntimeError("invalid api key")) as request:
+            with self.assertRaisesRegex(RuntimeError, "invalid api key"):
+                agents.summarize({}, {"subtitle": "内容"})
+        request.assert_called_once()
+
+    def test_summary_rejects_empty_model_response(self):
+        with mock.patch.object(agents.llm, "text", return_value=""):
+            with self.assertRaisesRegex(ValueError, "未返回"):
+                agents.summarize({}, {"subtitle": "内容"})
+
     def test_load_skill_missing(self):
         self.assertIsNone(agents.load_skill("不存在"))
 

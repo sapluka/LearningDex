@@ -4,6 +4,7 @@ from .shot_status import ShotError, validation_error
 from urllib.parse import urlsplit
 import json
 import re
+import time
 
 SYSTEM = (
     "你是视频学习助手。请将下方视频字幕整理成结构化的中文学习文档（markdown 格式），"
@@ -73,7 +74,7 @@ def _body(info, screenshots=False):
     return head + "==== 字幕 ====\n" + (info.get("subtitle") or "")
 
 
-def summarize(cfg, info, screenshots=False):
+def summarize(cfg, info, screenshots=False, progress=None):
     sysmsg = lecture_system() + "\n\n" + DIAGRAM_INSTRUCTION
     if screenshots and info.get("segments"):
         sysmsg += "\n\n" + SHOT_INSTRUCTION
@@ -81,7 +82,18 @@ def summarize(cfg, info, screenshots=False):
         {"role": "system", "content": sysmsg},
         {"role": "user", "content": _body(info, screenshots)},
     ]
-    return llm.text(cfg, msgs)
+    for attempt in range(2):
+        try:
+            result = llm.text(cfg, msgs, streaming=True, timeout=180)
+            if not result or not result.strip():
+                raise ValueError("模型未返回学习文档正文")
+            return result
+        except Exception as error:
+            if attempt or not llm.is_connection_error(error):
+                raise
+            if progress:
+                progress("生成笔记时连接中断，正在重试")
+            time.sleep(1)
 
 
 def suggest_title(cfg, info, doc):

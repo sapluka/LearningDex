@@ -491,7 +491,8 @@ class Api:
         self._emit("正在生成笔记")
         screenshots = self.cfg.get("screenshots", True)
         try:
-            doc = agents.summarize(self.cfg, info, screenshots=screenshots)
+            doc = agents.summarize(self.cfg, info, screenshots=screenshots,
+                                   progress=self._emit)
         except Exception as e:
             return {"ok": False, "error": f"生成失败：{e}", "info": info}
         tid = _task_id(url)
