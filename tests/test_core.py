@@ -80,6 +80,16 @@ class TestTranscribe(unittest.TestCase):
 
 
 class TestLlm(unittest.TestCase):
+    def test_connection_requires_nonempty_answer(self):
+        with mock.patch.object(llm, "text", return_value="  "):
+            with self.assertRaisesRegex(RuntimeError, "未返回正文"):
+                llm.test_connection({})
+
+    def test_connection_allows_thinking_model_to_answer(self):
+        with mock.patch.object(llm, "text", return_value="OK") as request:
+            self.assertEqual(llm.test_connection({}), "OK")
+        self.assertGreaterEqual(request.call_args.kwargs["max_tokens"], 64)
+
     def test_full_model_anthropic(self):
         self.assertEqual(llm.full_model({"protocol": "anthropic", "model": "deepseek-v4-flash"}),
                          "anthropic/deepseek-v4-flash")

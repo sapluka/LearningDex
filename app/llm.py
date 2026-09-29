@@ -38,4 +38,8 @@ def stream(cfg, messages, **kw):
 
 
 def test_connection(cfg):
-    return text(cfg, [{"role": "user", "content": "ping"}], max_tokens=5)
+    reply = text(cfg, [{"role": "user", "content": "只回答 OK"}], max_tokens=128,
+                 timeout=30)
+    if not reply or not reply.strip():
+        raise RuntimeError("模型未返回正文，连接检验未通过")
+    return reply
